@@ -1,1 +1,1 @@
-# SA_Fall2023_Phage_Rotation
+Analzying metagenomic data from Muskegon Lake collected from 2014-2015. The primary goal is to identify whether there is a difference in phage communities between particle-associated (PA) and free-living (FL) bacteria. We will be using bioinformatic tools such as geNomad to analyze phages in samples. 
