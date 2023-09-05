@@ -1,1 +1,13 @@
+Objective: Install geNomad and download the database
 
+Purpose: geNomad will be used to identify viruses and plasmids in sequencing data. Has additional features like taxonomic assignment of viral genomes, identifying proviruses, and functional annonation of proteins. 
+
+Protocol:
+1. install geNomad 
+  - using conda to install
+    - first creating conda environment 
+  - then will activate using "conda activate genomad"
+
+2. Downloading the database
+  - geNomad depends on a database that contains profile markers to classify sequences, taxonomic info, functional annonations, etc.
+  
