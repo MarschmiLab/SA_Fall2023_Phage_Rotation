@@ -4,10 +4,15 @@ Purpose: geNomad will be used to identify viruses and plasmids in sequencing dat
 
 Protocol:
 1. install geNomad 
-  - using conda to install
-    - first creating conda environment 
-  - then will activate using "conda activate genomad"
+  - so far conda and pipx were unsuccessful for me to install
+  - I was able to successfully install with docker
 
 2. Downloading the database
   - geNomad depends on a database that contains profile markers to classify sequences, taxonomic info, functional annonations, etc.
+  - this was done on docker and I did not need to download the database it already did it for me when I installed it first
+
+Future goals:
+- use the practice FASTA file given on the geNomad website and follow the example
+- learn how to execute the command
+- learn how to understand the genomad_output directory 
   
