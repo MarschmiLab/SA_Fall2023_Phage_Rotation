@@ -1,1 +1,15 @@
+I. Things to Discuss
+  1. Phage rotation project
+
+II. Future Goals
+  1. Metabarcoding and metagenomics
+    - read paper about generating MAGs
+    - read geNomad paper
+    - read more papers about MAGs and work flow (Marian will send)
+  2. Phage rotation project
+    - in bioHPC server in workdir make my own folder NEVER WORK WITH HOME DIR ONLY WORKING
+    - conect to have git hub on the server
+    - then create symbolic link on the github
+
+
 
