@@ -1,0 +1,21 @@
+Objective: Create directory on the server (in local workdir). Explore other options than geNomad. Read papers about geNomad, MAG workflow,
+
+Purpose: geNomad will be used to identify viruses and plasmids in sequencing data. Has additional features like taxonomic assignment of viral genomes, identifying proviruses, and functional annonation of proteins. The data will be downloaded from the server. Its good to see if there is anything better than geNomad. It is critical to understand how the MAG workflow is done to understand how the data is generated and to understand what data are in the files.
+
+Protocol:
+1. create diretory on bioHPC server
+  - successfully created 
+  - successfully cloned my github
+
+2. Exploring other options to geNomad
+
+3. Read geNomad preprint
+
+4. Read MAG assembly and workflow paper Marian sent
+
+
+Future goals:
+- use the practice FASTA file given on the geNomad website and follow the example
+- learn how to execute the command
+- learn how to understand the genomad_output directory 
+  
