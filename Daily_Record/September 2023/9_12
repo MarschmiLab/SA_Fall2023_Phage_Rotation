@@ -8,6 +8,10 @@ Protocol:
   - successfully cloned my github
 
 2. Exploring other options to geNomad
+  - I peronally feel that geNomad is the best option due to its ability to annontate from MAGs, predict MGEs like plasmids, and identify proviruses. 
+  - Libusha Kelly has a preprint to annontate viral phage proteins but it takes it a step further IMO
+  - BV-BRC does not seem to make annonation with MAGs super easy but I have only had experience with it annonating for one single isolate
+  - tldr: I am still convinced that geNomad will be the best tool to use!
 
 3. Read geNomad preprint
 
@@ -18,4 +22,4 @@ Future goals:
 - use the practice FASTA file given on the geNomad website and follow the example
 - learn how to execute the command
 - learn how to understand the genomad_output directory 
-  
+- keep reading the papers
