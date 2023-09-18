@@ -1,0 +1,7 @@
+1. geNomad is already installed on the server so there is no need to install it on my computer. https://biohpc.cornell.edu/lab/userguide.aspx?a=software&i=986#c 
+2. load geNomad on server
+3. Marian will send MAG location on the server
+4. read manual for genomad to understand the output
+5. create pipeline for running geNomad
+  - include question, hypothesis, what data will be produced to answer question
+  - undertanding the ouptut results
