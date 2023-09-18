@@ -1,0 +1,11 @@
+I. Objective
+Today my goal is to be able to run the genomad example
+
+II. Protocol
+1. I had originally downloaded genomad through Docker but I do not understand how to run it from docker 
+2. I tried working with conda but it is still so slow
+3. I tried downloading it with mamba. Mamba is said to be faster than conda which is true. 
+4. I think the reason why it is taking conda so long to download is because even with mamba, I cannot fully install genomad because aragorn does not exist.
+  - error: the following package could not be installed.
+    - aragorn does not exist (perhaps a typo or a missing channel)
+
