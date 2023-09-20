@@ -7,4 +7,5 @@ II. Protocol:
 
 III. Future goals
 - So far geNomad does not give the description of the plasmid types if we were interested in identifying the plasmid incompatibility types then we could use plasmidfinder on shell. I have to see if it works for short read sequences.
+- https://www.biorxiv.org/content/10.1101/2022.08.04.502827v1.full can use plaSquid to identify and classify plasmid sequences from circularized or fragmented assemblies.
 - from geNomad's analysis it gives you predicted plasmid genes but cant tell if you if the plasmid is mobilizable or conjugative. geNomad reccomends using CONJscan to identify conjugative plasmids and ICEs. CONJscan is a module of MacSyFinder and it could be interesting down the line to use it.
