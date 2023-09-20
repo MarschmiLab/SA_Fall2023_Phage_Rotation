@@ -1,0 +1,10 @@
+I. Objective:
+- To practice with geNomad and understand its output files. Using geNomad's example files.
+
+II. Protocol:
+  1. Running geNomad on the server
+  2. input the example file and am analyzing the data from the summary files and such
+
+III. Future goals
+- So far geNomad does not give the description of the plasmid types if we were interested in identifying the plasmid incompatibility types then we could use plasmidfinder on shell. I have to see if it works for short read sequences.
+- from geNomad's analysis it gives you predicted plasmid genes but cant tell if you if the plasmid is mobilizable or conjugative. geNomad reccomends using CONJscan to identify conjugative plasmids and ICEs. CONJscan is a module of MacSyFinder and it could be interesting down the line to use it.
