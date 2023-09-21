@@ -1,0 +1,15 @@
+I. Objective
+  - Yesterday I created a bash script (in my code directory called rename_geNomad.sh) that would input all 346 MAGs and submit through geNomad as opposed to doing it individually
+  - Today I will:
+    1. Run the 346 MAGs through the terminal
+    2. Begin analysis of the output file
+    3. Install screen or tmux
+
+
+II. Protocol 
+1. In server I will be running the 346 MAGs through my script (located in my code directory) called geNomad_processing.sh
+2. The results will be placed into an output file called "genomad_output: which is located in Output/
+
+
+III. Future goals
+1. I will continue my analysis through Rstudio and create Rmarkdown files to display my analysis and results
