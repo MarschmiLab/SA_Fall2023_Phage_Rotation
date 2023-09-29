@@ -1,0 +1,5 @@
+Objective:
+  1. Now that the geNomad has run and annontated all 346 MAGs, to begin analysis all summary files must be concatenated to one file
+
+Protocol:
+  1. Concatenate files. Shell script called "geNomad_filter_output_files" will be used to filter proviruses and plasmid summary files. 
