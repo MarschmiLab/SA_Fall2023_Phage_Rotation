@@ -59,11 +59,11 @@ awk 'NR==1{print $0" filename" }' *.fa_plasmid_summary.tsv > plasmid_summary.tsv
 awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_plasmid_summary.tsv >> plasmid_summary.tsv
 
 #3. creating long list of all virus genes
-awk 'NR==1{print $0" filename" }' *.fa_virus_genes.tsv > virus_genes.txt
+awk 'NR==1{print $0" filename" }' *.fa_virus_genes.tsv > virus_genes.tsv
 awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_virus_genes.tsv >> virus_genes.tsv
  
 #4. creating long list of all virus summary
-awk 'NR==1{print $0" filename" }' *.fa_virus_summary.tsv > virus_summary.txt
+awk 'NR==1{print $0" filename" }' *.fa_virus_summary.tsv > virus_summary.tsv
 awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_virus_summary.tsv >> virus_summary.tsv
 
 #at this point we have successfully created our long lists of data of plasmid and phage information and we can now begin our Rstudio analysis
