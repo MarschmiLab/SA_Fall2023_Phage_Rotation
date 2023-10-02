@@ -1,0 +1,9 @@
+I. Objective
+  - Begin Rstudio analysis with my long list of files that have been concatenated
+
+II. Protocol
+  1. I finished the file that concatenates all the individual bin information. This script is in Code/geNomad_filter_output_files.sh and it created 4 .tsv files. The four files are plasmid_genes, plasmid_summary, virus_genes, and plasmid_summary. These 4 individual files will be added to the data directory.
+  2. I will begin analyze the 4 long files in Rstudio
+
+III. Future goals
+  1. Keep analyzing the data:)
