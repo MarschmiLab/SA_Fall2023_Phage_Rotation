@@ -13,6 +13,8 @@ output:
       collapsed: no
       smooth_scroll: yes
       toc_depth: 3
+  pdf_document:
+    toc: yes
 editor_options:
   chunk_output_type: console
 ---
@@ -47,7 +49,7 @@ knitr::opts_chunk$set(eval = TRUE,
 
 ```{r load-packages}
 # Efficiently load packages
-pacman::p_load(readr, stringr, tidyr, tidyverse, dplyr, ggplot2, tidytext, scales, wesanderson, ggpubr, wacolors, rcartocolor, install = FALSE)
+pacman::p_load(readr, stringr, tidyr, tidyverse, dplyr, ggplot2, tidytext, scales, wesanderson, ggpubr, wacolors, rcartocolor, treeio, ggtreeExtra, phyloseq, ggtree, ggstar, install = FALSE)
 ```
 
 ### Load summary files produced by geNomad
@@ -207,8 +209,6 @@ count_fraction_class <- count_magfull %>%
   geom_bar(stat = "identity", position = "dodge")
   
 count_fraction_class
-
-
 ```
 
 ##### Bar Graph with percentages
@@ -297,7 +297,7 @@ count_peg_seq <- total_PEG_bin %>%
   mutate(Count_Seq_name = n()) 
 
 count_peg_seq
-#now we are going to divide by the conjugation gene type by the bin
+#now we are going to divide by the plasmid gene type by the bin
 count_peg_seq$genes_per_bin <- count_peg_seq$total_n_genes / count_peg_seq$Count_Seq_name
 
 peg_phy <- ggplot(count_peg_seq, aes(x = fraction_class, y = genes_per_bin, fill = Phylum))+
@@ -397,25 +397,37 @@ peg_per_bin <- ggplot(count_peg_seq, aes(x = fraction_class, y = genes_per_bin, 
 peg_per_bin
 ```
 
-#### Number of plasmid encoded genes divided by length [not sure how to do this]
+#### Number of plasmid encoded genes divided by length
 
 ```{r number of plasmid encoded genes divided by length}
 #after talking with Marian it would be interesting to see how the number of genes per contig in the MAG vary according to length. Trying to get at the vibes of length and genome size is correlated with each other
 #looking at the merge_plasmid_sum_magfull because it seems that its more finalized in terms of bin and contigs?
 merge_plasmidsum_magfull$n_genes_per_length <- merge_plasmidsum_magfull$n_genes / merge_plasmidsum_magfull$length
 
-#but maybe I should do it y=  n_genes/mag x = length 
-#????????????????
-n_genes_length <- ggplot(merge_plasmidsum_magfull, aes(x = length, y = n_genes, fill = fraction_class))+
-  geom_bar(position = "dodge", stat = "identity") +
+
+plas_n_genes_length <- ggplot(merge_plasmidsum_magfull, aes(x = length, y = n_genes, fill = fraction_class))+
+  geom_point(size = 2, shape = 23) +
+  scale_x_log10() + 
   #scale_x_reordered() +
  # facet_wrap(~fraction_class, scale ="free_x")+
-  xlab("Fraction Class")+
-  ylab("Protein coding genes (count)")+
+  xlab("Length of Plasmid Encoded Genes")+
+  ylab("Number of Plasmid Encoded Genes")+
   theme_classic()
 
-n_genes_length
-#??????????????
+plas_n_genes_length
+```
+
+#### Plasmid score against number of genes
+
+```{r plasmid score and number of genes}
+plas_score_ngenes <- ggplot(merge_plasmidsum_magfull, aes(x = n_genes_per_length, y = plasmid_score, fill = fraction_class))+
+  geom_point(size = 2, shape = 23) +
+  scale_x_log10() + 
+  xlab("Length of Plasmid Encoded Genes")+
+  ylab("Number of Plasmid Encoded Genes")+
+  theme_classic()
+
+plas_score_ngenes
 ```
 
 #### Density plot looking at number of plasmid encoded genes/MAG (x axis) and the density (y axis)
@@ -479,20 +491,20 @@ congene_gg <- ggplot(congenee, aes(x = fraction_class, y = conjugation_gene_coun
 congene_gg
 
 
-# total_conj_gene_per_bin <- congenee %>%
-#   group_by(Seq_Name, Bin, conj_gene_type, fraction_class) %>%
-#   summarise(Count_Genes = n(), .groups = "drop")
-# 
-# 
-# #now count the number of seq_names 
-# #remember that we are taking into consideration the kind of conjugation gene in this
-# count_seq_name <- total_conj_gene_per_bin %>% 
-#   group_by(Seq_Name) %>% 
-#   mutate(Count_Seq_name = n()) 
-# 
-# count_seq_name
-# #now we are going to divide by the conjugation gene type by the bin
-# count_seq_name$genes_per_bin <- count_seq_name$Count_Genes / count_seq_name$Count_Seq_namec
+total_conj_gene_per_bin <- congenee %>%
+  group_by(Seq_Name, Bin, conj_gene_type, fraction_class) %>%
+  summarise(Count_Genes = n(), .groups = "drop")
+
+
+#now count the number of seq_names
+#remember that we are taking into consideration the kind of conjugation gene in this
+count_seq_name <- total_conj_gene_per_bin %>%
+  group_by(Seq_Name) %>%
+  mutate(Count_Seq_name = n())
+
+count_seq_name
+#now we are going to divide by the conjugation gene type by the bin
+count_seq_name$genes_per_bin <- count_seq_name$Count_Genes / count_seq_name$Count_Seq_name
 ```
 
 #### Visualizing conjugation genes divided by MAG
@@ -549,6 +561,15 @@ conj_genes_per_bin <- ggplot(count_seq_name, aes(x = fraction_class, y = genes_p
   theme_classic()
   #theme(plot.title = element_text(hjust = 0.5))
 conj_genes_per_bin
+
+#now lets join the count_seq_name and merge_plasmidsum_magfull data frames together
+merge_plasmidsum_magfull_conjugation <- left_join(merge_plasmidsum_magfull, count_seq_name, by = c("Seq_Name" = "Seq_Name"))
+# Warning message:
+# In left_join(merge_plasmidsum_magfull, count_seq_name, by = c(Seq_Name = "Seq_Name")) :
+#   Detected an unexpected many-to-many relationship between `x` and `y`.
+# ℹ Row 235 of `x` matches multiple rows in `y`.
+# ℹ Row 1 of `y` matches multiple rows in `x`.
+# ℹ If a many-to-many relationship is expected, set `relationship = "many-to-many"` to silence this warning.
 ```
 
 ### Phage Analysis
@@ -627,6 +648,24 @@ number_of_phage_genes <- ggplot(phab_tax_phass_combine, aes(x = fraction_class, 
 number_of_phage_genes 
 ```
 
+#### Number of phage encoded genes divided by length
+
+```{r number of phage encoded genes divided by length}
+#after talking with Marian it would be interesting to see how the number of genes per contig in the MAG vary according to length. Trying to get at the vibes of length and genome size is correlated with each other
+#looking at the merge_virussum_magfull because it seems that its more finalized in terms of bin and contigs?
+merge_virussum_magfull$n_genes_per_length <- merge_virussum_magfull$n_genes / merge_virussum_magfull$length
+
+
+phage_n_genes_length <- ggplot(merge_virussum_magfull, aes(x = length, y = n_genes, fill = fraction_class))+
+  geom_point(size = 2, shape = 23) +
+ # scale_x_log10() + 
+  xlab("Length of Phage Encoded Genes")+
+  ylab("Number of Phage Encoded Genes")+
+  theme_classic()
+
+phage_n_genes_length
+```
+
 #### Density plot of phage encoded genes per MAG
 
 ```{r Density plot of phage encoded genes per MAG}
@@ -691,69 +730,410 @@ number_of_phage_genes2 <-
 
 ```
 
-# Introduction
+### Using GTDBTK to do phylogenetic analysis
 
-Analyzing metagenomic data from Muskegon Lake collected from 2014-2015. The primary goal is to identify whether there is a difference in phage communities between particle-associated (PA) and free-living (FL) bacteria. We will be using bioinformatic tools such as geNomad to analyze phages in samples.
+#### The code that I used is located in my code directory called gtdbtk.sh
 
-## Phage Rotation Project
+```{bash GTDBTK}
+#To use gtdbtk there is no need to install it as it is a huge download and we already have it on our server located in databases. Please go to /local/workdir/databases/gtdbtk_release214/release214/release214/taxonomy to use this
+source $HOME/miniconda3/bin/activate
 
-### Date: 2023_09_05
+#Set GTDBTK_DATA_PATH to new reference db directory, for example
+#if you do gtdbtk-2.1.1 that is the release version for the release207_v2
+#if you want to do the most updated release (to me that seems more reasonable) then you will want to use the gtdbtk-2.3.
 
-Objective: Install geNomad and download the database
+conda create -n gtdbtk-2.3.2 -c conda-forge -c bioconda gtdbtk=2.3.2
 
-Purpose: geNomad will be used to identify viruses and plasmids in sequencing data. Has additional features like taxonomic assignment of viral genomes, identifying proviruses, and functional annonation of proteins.
+# To activate this environment, use
+#
+#     $ conda activate gtdbtk-2.3.2
+#
+# To deactivate an active environment, use
+#
+#     $ conda deactivate
 
-Protocol: 1. install geNomad - so far conda and pipx were unsuccessful for me to install - I was able to successfully install with docker
+#now activate the conda environment so that we can add the stuff to the environment 
+conda activate gtdbtk-2.3.2
+#The conda package is bundled with a script download-db.sh (source) that will automatically download, and extract the GTDB-Tk reference data. The script will be on the system path so simply run:
+#this part takes FOREVER just fyi use screen or something
+download-db.sh
 
-2.  Downloading the database
+#set path 
+conda env config vars set GTDBTK_DATA_PATH="/home/sna49/miniconda3/envs/gtdbtk-2.3.2/share/gtdbtk-2.3.2/db"
 
--   geNomad depends on a database that contains profile markers to classify sequences, taxonomic info, functional annonations, etc.
--   this was done on docker and I did not need to download the database it already did it for me when I installed it first
+#checking which version just in case (keep in mind this part takes a minute)
+gtdbtk check_install
 
-3.  Get access to bioHPC server
+#created new directory called gtdbtk 
+/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/346_MAGs
+  #I recopied the original 346 MAGs but jsut the .fa version
+  
+#we will now begin to do our analysis with the command called classify_wf
+  #this workflow consists fo 4 steps:
+    #ani_screen: compares our genomes against a MASH database composed of all GTDB representative genoems then verifies the best mash hits using FASTANI which is a method used to estimate average nucleotide identity using alignment free approximate sequence mapping. it is good for finished and draft genomes
+    #identify: uses prodigal and uses HMM mdoels and HMMER package to identify the 120 bacterial and 53 archaeal marker genes used for phylogenetic inference. MSA obtained by aligning amrker gene to respective HMM model
+    #align: concatenates the aligned marker genes and filters the concatenated MSP to approx 5k amino acids
+    #classify: uses pplacer to find the ML placement of each genome in teh gtdbtk reference tree. GTDBTK classifies each genome based on its placment in refernece tree, relative evolutionary divergence, and/or ANI to reference geomes
+    
+    #workflow command: gtdbtk classify_wf --genome_dir <my_genomes> --out_dir <output_dir>
+      #genomes must be in FASTA format but .gz is acceptable which is awesome bc thats what we got
+      
+gtdbtk classify_wf --genome_dir /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/346_MAGs --out_dir classify_gtdbtk_output --mash_db 2.3.2 -x .fa --cpus 100
+#gtdbtk = command
+#classify_wf = pipeline used
+##--genome_dir = pointing to the genome directory or wherever our files are at
+#out_dir = pointing to the output directory
+#classify_gtdbtk_output = this is the output file that is being created
+#--mash_db 2.3.2 = this version of GTDBTK requires that you input the mash_db version (2.3.2 is the one we downloaded). This Using the --mash_db option will indicate to GTDB-Tk the path of the sketched Mash database require for ANI screening.
+  #If no database are available ( i.e. this is the first time running classify ), the --mash_db option will sketch a new Mash database that can be used for subsequent calls.
+#-x .fa = -x means extension files. the files we have are .fa
+#--cpus 100 = these are the cpus that are being used by the server to calculate
 
--   registered for account
+#general notes about downloading
+  #does not seem to like the .gz files 
+  #instead I just did the original .fa files 
 
-Future goals: - use the practice FASTA file given on the geNomad website and follow the example - learn how to execute the command - learn how to understand the genomad_output directory
+  
+#so far GTDBTK gives us the msa alignment when we use the code above, this can be used for an unrooted tree which is totally fine
 
-### Date: 2023_09_12
+#but we can also try the de novo wf to give us a rooted tree and we would use planctomycetes as our outgroup
+gtdbtk de_novo_wf --genome_dir /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/346_MAGs --outgroup_taxon p__Chloroflexota --bacteria  --out_dir de_novo_wf_test1 -x .fa --cpus 100
+```
 
-Objective: Create directory on the server (in local workdir). Explore other options than geNomad. Read papers about geNomad, MAG workflow,
+#### Installing fastree
 
-Purpose: geNomad will be used to identify viruses and plasmids in sequencing data. Has additional features like taxonomic assignment of viral genomes, identifying proviruses, and functional annonation of proteins. The data will be downloaded from the server. Its good to see if there is anything better than geNomad. It is critical to understand how the MAG workflow is done to understand how the data is generated and to understand what data are in the files.
+```{bash installing fast tree}
+#There are 2 previous version(s) available. Any version can be accessed either by typing full path, or by adding it to the PATH and then typing its name at the prompt. NOTE: you need to set PATH only once per login/session.
 
-Protocol: 1. create diretory on bioHPC server - successfully created - successfully cloned my github
+#add to path
+export PATH=/programs/FastTree-2.1.11:$PATH
 
-2.  Exploring other options to geNomad
+#then type name to get the program activated
+FastTree
 
--   I peronally feel that geNomad is the best option due to its ability to annontate from MAGs, predict MGEs like plasmids, and identify proviruses.
--   Libusha Kelly has a preprint to annontate viral phage proteins but it takes it a step further IMO
--   BV-BRC does not seem to make annonation with MAGs super easy but I have only had experience with it annonating for one single isolate
--   tldr: I am still convinced that geNomad will be the best tool to use!
+# http://www.microbesonline.org/fasttree/#Usage link for running the code 
 
-3.  Read geNomad preprint
+#when looking at our results we see that the files are in AA format
+chmod +rwx Data/gtdbtk/classify_gtdbtk_output/align
+chmod +rwx  data/MAG_gtdb_magonly_tree/align/gtdbtk.bac120.user_msa.fasta.gz
+gunzip data/MAG_gtdb_magonly_tree/align/gtdbtk.bac120.user_msa.fasta.gz
+FastTree data/MAG_gtdb_magonly_tree/align/gtdbtk.bac120.user_msa.fasta > data/MAG_gtdb_magonly_tree/gtdb_magonly.tree
 
-4.  Read MAG assembly and workflow paper Marian sent
+#for a protein alignment #FastTree input_aln.fasta > input.tre FOR UNROOTED TREE
+chmod +rwx /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output/align/gtdbtk.bac120.user_msa.fasta.gz
+gunzip /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output/align/gtdbtk.bac120.user_msa.fasta.gz
+FastTree /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output/align/gtdbtk.bac120.user_msa.fasta > /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output/tree.tree
+conda deactivate
 
-Future goals: - use the practice FASTA file given on the geNomad website and follow the example - learn how to execute the command - learn how to understand the genomad_output directory - keep reading the papers
+#this code is for our rooted tree created by de_novo_wf
+chmod +rwx /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/gtdbtk.bac120.user_msa.fasta.gz
+gunzip /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/gtdbtk.bac120.user_msa.fasta.gz
+FastTree /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/gtdbtk.bac120.user_msa.fasta > /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/unrooted.tree
+```
 
-### Date: 2023_10_04
+#### Creating phyloseq object
 
-#### Purpose
+```{r phyloseq object}
+#to create phyloseq object we need 3 things: OTU, Taxonomy, Samples
+#I am using Gus's phyloseq object and adding my own taxonomy to it as GTDBTK was able to update the taxonomy (Thank you Gus!!)
 
-Today I will be continuing with organizing my geNomad output files. I am currently working on organizing my 4 concatenated files
+#brining in the relative abundance table. Gus calculated with bwa, bbmap:pileup, and "summarizing_percontig_coverage.R"
+cov_table_sum<-read.csv ("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/phyloseq/transposed_norm_avg_coverage_perbin.csv")
+#use gsub clean up data NEED TO DO THIS PART I LEFT OFF HERE
+cov_table_sum$bin <- gsub("-", "_", cov_table_sum$bin)
 
-I am also understanding each of the outputs from geNomad in each of the columns
+#define the row names from OTU column 
+matrix_cov_table_sum<-as.matrix.data.frame(cov_table_sum[3:18])
+rownames(matrix_cov_table_sum)<-cov_table_sum$bin
 
-#### Protocol
 
-1.  Working on my script in Rstudio called "organize_concatenated_outputs.R"
 
--   This script is meant to delimit and organize the outputs of the columns
+#then bring in the sample matrix
+metadata<-read.csv("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/phyloseq/sample_metadata.csv")%>%
+  mutate(sample = paste0("X", sample_ID))%>%
+  select(-sample_ID)
 
-2.  Understand the outputs of each column
+rownames(metadata)<-metadata$sample
 
--   Reading their published paper and documentation from their website
+#bring in our taxonomy table 
+# need to clean up the data as well
+taxadata <- read.delim("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/gtdbtk.bac120.summary.tsv") %>% 
+  select(user_genome, classification) %>% 
+  separate(classification, sep = ";", into = c("Domain","Phylum","Class","Order","Family","Genus","Species"))%>%
+  mutate(across(!user_genome, function(x)sub(x, pattern = ".__", replacement = "")),
+         user_genome = stringr::str_remove(user_genome, ".contigs"))
 
-#### Understanding geNomad output columns
+#use gsub clean up data 
+taxadata$user_genome <- gsub("-", "_", taxadata$user_genome)
+
+#adding in our mag_full_df file
+mag_full <- mag_full_df 
+#cleaning up our merged file
+mag_full <- mag_full %>% 
+  select(-c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "growth_class")) %>% 
+  inner_join(taxadata, by = c("bin" = "user_genome"))
+
+#Bring in gRodon data
+growthrate<-read.csv("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/phyloseq/bakta_mags_growthrates.csv")%>%
+  select(2:Sample)%>%
+  mutate(Sample = str_remove(Sample, pattern = ".contigs"))
+
+growthrate$Sample <- gsub("-", "_", growthrate$Sample)
+
+taxadata<-taxadata%>%
+  inner_join(growthrate, by = c("user_genome" = "Sample"))
+
+
+taxa_matrix<-as.matrix(taxadata[2:ncol(taxadata)])
+rownames(taxa_matrix)<-taxadata$user_genome
+
+#Bringing in our phylogenetic tree. this is the one that is created from our classify_wf with the --skip_ani_screen flag
+tree<-read.newick("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/unrooted.tree")%>%
+  as_tibble()%>%
+  mutate(label = stringr::str_remove(label, ".contigs"))%>%
+  as.phylo()
+
+tree$tip.label <- gsub("-", "_", tree$tip.label)
+
+#Construct our phyloseq sample, otu, and taxa tables
+SAMP<-sample_data(metadata)
+OTU_sum<-otu_table(matrix_cov_table_sum, taxa_are_rows = T)
+TAX<-tax_table(taxa_matrix)
+
+#Put them together into a phyloseq object
+mag_phylo_sa <- phyloseq(OTU_sum, SAMP, TAX, tree)
+
+#Saving to RData file for analysis
+save(mag_phylo_sa, file = ("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/MAG_phyloseq_SA.RData"))
+
+```
+
+#### Using ggtree and other packages to view unrooted phylogenetic tree
+```{r ggtree to view unrooted tree}
+#read in your tree
+unroot <- phy_tree(mag_phylo_sa)
+
+# The circular layout tree
+p <- ggtree(unroot, layout="fan", size=0.4, open.angle=0)
+
+p
+```
+
+#### Adding tip points with ggstar
+```{r tip points with ggstar}
+#add tip points with geom_star of ggstar
+p1 <- p %<+% mag_full_df +
+  geom_star(
+    mapping=aes(fill=Phylum, starshape=fraction_class),
+    starstroke=0.6
+  ) +
+  scale_fill_manual(
+    values=c("#3f50a3", "#C0B956", "#e46009", "#CE8C1D","#965126","#553D32", "#04d2d5", "#80405e", "#b2e902", "#72c998", "#9FB6D9", "#B994E5", "#DF3383"),
+    guide=guide_legend(keywidth = .5, keyheight = .5, 
+                       order = 1, 
+                       override.aes = list(starshape=15)),
+                       na.translate=FALSE 
+  ) +
+  scale_starshape_manual(
+    values=c(15,1,12),
+    guide=guide_legend(keywidth = 0.5, keyheight = 0.5, 
+                      labs(fill="Fraction Class"), order = 2),
+    na.translate=FALSE
+  ) +
+  new_scale_fill() 
+
+#p1 has ggstar that colors by bacterial phylym and has node tip points as fraction_class
+p1
+
+
+
+
+
+
+#notes about the clade info:
+    #cyanobacteria: node 1-19, 348, 349(partial), 350(partial), 351-352, 353(partialbar), 354(partial), 355-365
+    #Armatinomondota: node 21-22, maybe bar in node 367 and 368 need to adjust to see
+    #Firmicutes node:23-27; node bar: 366 but also might be, 369 (thisisthebar) 370-372
+    #Actinobacteriota node:27-63, 376-377(partialbar), 378-382, 383-387(partialbar), 388-391, 392(partial), 393, 394(partial), 395-398, 399-400(partial), 401, 402(partial), 403-409, 410-411(partial), 412, 413 (partial), 414-418, node bar: 374 and 375
+    #Gemmatimonadota node:74-76, 422-423
+    #Bacteroidota node: 77-155, 373, 421,424-501, node bar: 421 and 424 and 425
+      #somany partials between 300-501
+    #Bedellovibrionota and maybe _C: 339-344, 685-689 node bar 685 maybe node bar 684 or even 686
+    #Bdellovibrionota or maybe _C: node bar 688
+    #Verrucomicrobiota node: 156-191, 503-537,  node bar: 503
+      #partial: 506, 509, 510 or 512, 513, 514-516, 525, stop checking track after 525 thres a lot (idk lazy to see)
+    #Planctomyceotota node: 193-252, 538-597, node bar: 538
+    #Proteobacteria node: 255-338, 601-683, node bar: 601
+    #Acideobacteriota node: 253-254, node bar MAYBE: 599
+    #Myxococcota_A node: 345-346, node bar: 690
+    
+    #extra: this wrapsaroundn like 90% of tree for some reason geom_cladelab(node = 373 , label = "wrapsaroundmostoftree")+
+    #extra: node 347 wraps around entire tree
+    #extra: node 419 wraps around like 75%ish of tree
+    #extra: node 420 wraps around like 50% of bottom half of tree 
+    #extra: this includes Verrucomicrogiota until Planctomyceotota geom_cladelab(node = 502 , label = "Verrucomicrobiota+ Planctomycetota")
+    #extra: node 543 covers like 95% of Planctomyceotota but 538 is better geom_cladelab(node = 543 , label = "englishaccent")+
+    #extra" node 598 and 600 covers Proteobacteria+Myxoccocta_A+ Bdellovironota+Bdellovibrionota_C +Acideobacteriota
+    #extra: node 684 seems to cover Bdellovibrionota + Bdellovribrionota_C + Myxococcota_A but i ened to see more
+
+
+```
+
+#### Now using geom_hilight to highlight ALL bacterial phyla 
+```{r geom_hilight}
+#highlighting nodes
+p2 <- p1 +
+  geom_hilight(node = 599, alpha=0.4, fill="#3f50a3", extendto= 1.45, size=0.05) + #acido
+  geom_hilight(node = 374, alpha=0.45, fill="#C0B956", extendto= 1.45, size=0.05) + #actino
+  geom_hilight(node = 367, alpha=0.5, fill="#e46009", extendto= 1.45, size=0.05) + #arma
+  geom_hilight(node = 424, alpha=0.4, fill="#CE8C1D", extendto= 1.45, size=0.05) + #bacterio
+  geom_hilight(node = 685, alpha=0.5, fill="#965126", extendto= 1.45, size=0.3) + #bdello
+  geom_hilight(node = 689, alpha=0.55, fill="#553D32", extendto= 1.45, size=0.3) + #bdello_c
+  geom_hilight(node = 348, alpha=0.25, fill="#04d2d5", extendto= 1.45, size=0.05) + #cyano
+  geom_hilight(node = 369, alpha=0.4, fill="#80405e", extendto= 1.45, size=0.05) + #firmicutes
+  geom_hilight(node = 422, alpha=0.35, fill="#b2e902", extendto= 1.45, size=0.3) + #gemma
+  geom_hilight(node = 690, alpha=0.55, fill="#72c998", extendto= 1.45) + #myxo
+  geom_hilight(node = 538, alpha=0.4, fill="#9FB6D9", extendto= 1.45, size=0.05) + #planctomycetota
+  geom_hilight(node = 601, alpha=0.4, fill="#B994E5", extendto= 1.45, size=0.05) + #proteo
+  geom_hilight(node = 503, alpha=0.4, fill="#DF3383", extendto= 1.45, size=0.5)  #verru
+  
+p2
+```
+
+#### Labeling clades with geom_cladelabel
+```{r}
+#labeling clades
+#I only labeled the bigger phyla, the smaller ones i excluded for aesethetic purposes
+p3 <- p2 +
+  geom_cladelabel(node = 374, label= "Actinobacteriota", align= TRUE, offset.text=.1,barsize=NA, fontsize=5, angle="auto", colour = "#8a863e", hjust="center", horizontal=FALSE) +
+  geom_cladelabel(node = 424, label= "Bacteriodota", align= TRUE, offset.text=.1,barsize=NA, fontsize=5, angle="auto", colour = "#a67117", hjust="center", horizontal=FALSE) + 
+  geom_cladelabel(node = 348, label= "Cyanobacteria", align= TRUE, offset.text=.07,barsize=NA, fontsize=4, angle="auto", colour = "#03bdbf", hjust="center", horizontal=FALSE) +
+  geom_cladelabel(node = 538, label= "Planctomycetota", align= TRUE, offset.text=.07,barsize=NA, fontsize=5, angle="auto", colour = "#8fa3c3", hjust="center", horizontal=FALSE) +
+  geom_cladelabel(node = 601, label= "Proteobacteria", align= TRUE, offset.text=.07,barsize=NA, fontsize=5, angle="auto", colour = "#a685ce", hjust="center", horizontal=FALSE) + 
+  geom_cladelabel(node = 503, label= "Verrucomicrobiota", align= TRUE, offset.text=.07,barsize=NA, fontsize=5, angle="auto", colour = "#DF3383", hjust="center", horizontal=FALSE) 
+
+p3 #this has all the clade highlights and the larger clades are labelled
+```
+
+#heatmap of conjugation genes
+```{r ggtreeExtra conjugation genes heatmap}
+#heatmap, using geom_fruit to link geom_tile
+#joining total_conj_gene_per_bin with mag_full using full_join to match everything tgt
+  #be mindful that the count total_conj
+testing_join <- full_join(count_seq_name, mag_full_df, by = c("Seq_Name" = "bin"))
+#replacing NA in count genes
+testing_join$Count_Genes[is.na(testing_join$Count_Genes)] <- 0
+testing_join$Count_Seq_name[is.na(testing_join$Count_Seq_name)] <- 0
+testing_join$genes_per_bin[is.na(testing_join$genes_per_bin)] <- 0
+
+#first lets clean up our file because we keep getting errors that the columns are the same
+new_total <- select(testing_join, -c(Bin,fraction_class.x,log2FoldChange,padj,fraction_class.y,Domain,Phylum,Class,Order,Family,Genus,Species))
+#convert new_total that is currently a tibble into dataframe
+new_total_df <- as.data.frame(new_total)
+
+#now lets make tree with heatmap ring with ggtreeExtra
+gg_conj <- p2 + 
+  geom_fruit(
+    data=new_total_df,
+    geom=geom_tile,
+    mapping=aes(y=Seq_Name, x=conj_gene_type, alpha=genes_per_bin, fill=conj_gene_type),
+    color = "#525252",
+    size = 0.35,
+    offset = 0.05,
+    pwidth=0.4
+  ) +
+  scale_alpha_continuous(
+    range=c(0,1), #range must lie between 0 and 1
+    guide=guide_legend(keywidth = 0.3, keyheight = 0.3, order= 5)
+  ) +
+  scale_fill_manual(
+    values = c("#313167", "#aa5c3a", "olivedrab1", "#eba2b7"),
+    guide=guide_legend(keywidth = 0.5, keyheight = 0.3, order = 4),
+    na.translate= FALSE
+  ) 
+gg_conj #this is trying to look at a heatmap of the conjugation genes without the clade labels 
+```
+
+#### geom_col to look at plasmid genes per bin 
+```{r geom_col plasmid genes per bin ggtreeExtra}
+#we want to merge these numbers together and count them so that we can plot them as a heatmap and bar graph!
+count_plasmid_total_peg <- merge_plasmidsum_magfull %>% 
+  group_by(Seq_Name) %>% 
+    summarize(n_genes = sum(n_genes), .groups="drop")  
+
+#bar graph of plasmid encoded genes. we will be using the dataframe count_peg_seq to see the number of plasmid encoded genes per bin that has the calculations for #plasmid genes per MAG
+test_merge_plasmid <- full_join(count_peg_seq, count_plasmidgenes_magfull, by=c("Seq_Name"="bin"))
+#now turning the NAs into zeros
+test_merge_plasmid$genes_per_bin[is.na(test_merge_plasmid$genes_per_bin)] <- 0
+#cleaning up our merged file
+test_merge_plasmid1 <- test_merge_plasmid %>% 
+  select(-c("Domain", "Phylum.x", "Phylum.y", "Class", "Order", "Family", "Genus", "Species", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "growth_class", "fraction_class.x", "Bin", "log2FoldChange","padj")) 
+                             
+p5 <- p2 +
+  geom_fruit(
+    data=test_merge_plasmid1,
+    geom=geom_col,
+    mapping=aes(x=genes_per_bin, y=Seq_Name, fill=fraction_class.y),
+    orientation="y",
+    pwidth=.38,
+    position=position_stackx(),
+  ) +
+  scale_fill_manual(
+    values = c("#965953", "black", "#53977a")
+  ) +
+  geom_treescale(fontsize=2.9, linesize = .2, x=2)
+ 
+p5 #this is showing us the number of plasmid encoded genes that are divided by MAG
+
+```
+
+#### Phage Encoded Genes geom_col
+```{r phage encoded genes heatmap}
+#count all the genes in the bin 
+phab_genes <- merge_virussum_magfull
+total_phab_genes_bin <- phab_genes %>%
+  group_by(Seq_Name, Bin, n_genes, fraction_class) %>% 
+  summarise(
+    Count_Genes = n(),
+    .groups = "drop",
+    total_n_genes = sum(n_genes))
+
+
+#now count the number of seq_names 
+count_phab_seq <- total_phab_genes_bin %>% 
+  group_by(Seq_Name) %>% 
+  mutate(Count_Seq_name = n()) 
+
+count_phab_seq
+#now we are going to divide by the # gene type by the bin
+count_phab_seq$genes_per_bin <- count_phab_seq$total_n_genes / count_phab_seq$Count_Seq_name
+
+#now lets combine dataframes 
+counting_phage_genes <- mag_full_df
+#bar graph of phage encoded genes. we will be using the dataframe count_phab_seq to see the number of plasmid encoded genes per bin that has the calculations for # phage genes per MAG
+test_merge_phage <- full_join(count_phab_seq, counting_phage_genes, by=c("Seq_Name"="bin"))
+#now turning the NAs into zeros
+test_merge_phage$genes_per_bin[is.na(test_merge_phage$genes_per_bin)] <- 0
+#cleaning up our merged file
+test_merge_phage1 <- test_merge_phage %>% 
+  select(-c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "growth_class", "fraction_class.x", "Bin", "log2FoldChange","padj")) 
+
+#now lets make the ring                         
+p6 <- p2 +
+  geom_fruit(
+    data=test_merge_phage1,
+    geom=geom_col,
+    mapping=aes(x=genes_per_bin, y=Seq_Name, fill=fraction_class.y),
+    orientation="y",
+    pwidth=.38,
+    position=position_stackx()
+  ) +
+  scale_fill_manual(
+    values = c("#965953", "black", "#53977a")
+  ) +
+  geom_treescale(fontsize=2.9, linesize = .2, x=2)
+ 
+p6 #this is showing us the number of plasmid encoded genes that are divided by MAG
+```
+
 
