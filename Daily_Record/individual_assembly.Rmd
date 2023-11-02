@@ -1,0 +1,186 @@
+---
+title: "individual_assembly"
+author: "sophiaaredas"
+date: "2023-10-30"
+output: html_document
+---
+
+## Final Individual Community Analysis
+
+#### So our first analysis with geNomad was with our MAG files which are short reads binned together to make MAGs
+
+#### But we before we created our MAGs we have long contig files before we binned them and put them into MAGs
+
+#### We will see if geNomad does a more accurate prediction of plasmids and phages with the longer contigs pre binned
+
+### So geNomad has finished its analysis and now we have to organize our outputs
+
+#### We will be using the geNomad_filter_outputs.sh code
+```{bash script for summary directories}
+#this shell script will take geNomad output files from genomad_output_final_indiv_assemblies (my genomad output directory holding all files) into their respective summary files
+#in summary it will take separate summary files and combine them inot a big summary output file
+
+#set up environment to run genomad
+#source /programs/miniconda3/bin/activate genomad
+#genomad download-database .
+
+pwd #make sure that you are in the correct path /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/genomad_output_final_indiv_assemblies
+
+#our results with the summary .tsv files are embedded in the output directory so we must get the .tsv files out of the directory. we do not want the log files.
+#FIRST THINGS FIRST we want to get the files WITHIN the summary directories of each output.
+
+#but we need to actually start by naming the actual directory where we want the results sent to
+sum_directory="summary_tsv_files"
+
+#now we will create the output directory
+mkdir -p "sum_directory" #the -p ensures that there will be no error if there is an existing directory otherwise it will make the directory as needed
+
+for d in *.fa_summary/ ; do #iterating thorugh directories ending in *.fa_summary/
+  echo "$d" #printing each directory name with this ending
+  find "$d" -type f -name "*.tsv" -exec cp {} "sum_directory/" \;
+done
+
+#now all files will be placed in /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/genomad_output_final_indiv_assemblies/sum_directory
+
+#within that directory you will notice that all files have an ending with .tsv, but we will concatenate all files to end in their respective .txt file
+
+cd sum_directory #make sure you are in sum_directory
+
+#so now we will combine the output concatenated summary files into a long list and we will add a column that will specify the filename for each row
+
+#so now we are using the awk command that processes certain patterns and actions
+  #goes like: awk 'pattern { action }' input-file
+
+#so you could make the .tsv files into a long list of .txt but I will be making them into .tsv files so I can analyze them in rstudio later 
+#1. creating long list of all plasmid genes
+awk 'NR==1{print $0" filename" }' *.fa_plasmid_genes.tsv > plasmid_genes.tsv
+  #NR==1: checking to see if the current record number is 1, so it is processing first line aka the header of each file
+  #print $0: filename: if the condition is met it will print the entire line ('$0') followed by space and string called "filename"
+awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_plasmid_genes.tsv >> plasmid_genes.tsv
+  #FNR>1: checks to see if current record number within the current file is greater than 1, skips the first line or the header of each input file
+  #{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' : for reocrds that meet these conditions, it will modify the "filename" and remove teh directory path and then print modify 'filename' followed by entire line ('$0')
+  
+#2. creating long list of all plasmid summary
+awk 'NR==1{print $0" filename" }' *.fa_plasmid_summary.tsv > plasmid_summary.tsv
+awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_plasmid_summary.tsv >> plasmid_summary.tsv
+
+#3. creating long list of all virus genes
+awk 'NR==1{print $0" filename" }' *.fa_virus_genes.tsv > virus_genes.tsv
+awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_virus_genes.tsv >> virus_genes.tsv
+ 
+#4. creating long list of all virus summary
+awk 'NR==1{print $0" filename" }' *.fa_virus_summary.tsv > virus_summary.tsv
+awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_virus_summary.tsv >> virus_summary.tsv
+
+#at this point we have successfully created our long lists of data of plasmid and phage information and we can now begin our Rstudio analysis
+
+```
+
+### Community analysis organizing concatenated outputs
+
+```{r loading final individual summary files produced by geNomad}
+#set working directory
+setwd("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/genomad_output_final_indiv_assemblies/sum_directory/final_concatenated")
+
+#1. looking at plasmid genes
+community_plasmid_genes <- read.table(file = "plasmid_genes.tsv", sep ="\t", header = TRUE)
+
+#2. looking at plasmid summary 
+community_plasmid_summary <- read.table(file = "plasmid_summary.tsv", sep ="\t", header = TRUE)
+
+#3 looking at virus genes
+community_virus_genes <- read.table(file = "virus_genes.tsv", sep ="\t", header = TRUE)
+
+#4 looking at virus summary
+community_virus_summary <- read.table(file = "virus_summary.tsv", sep ="\t", header = TRUE)
+
+```
+
+## Creating data frames so that we can analyze the geNomad outputs
+
+### Creating dataframe of plasmid genes
+
+```{r create dataframe of plasmid genes}
+#1. plasmid genes
+#need to create dataframe
+df_communityplasmidgenes <- data.frame(community_plasmid_genes)
+
+#split the first column called gene into multiple columns
+#because there is so much going on with the column name we are going to separate each word into its own column and then mutate it together (dont be alarmed)
+df_communityplasmidgenes <- df_communityplasmidgenes %>% separate(gene, c('Final', 'Seq_Name', '', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
+
+#now we are going to mutate the combine the columns together
+df_communityplasmidgenes$Seq_Name <- paste(df_communityplasmidgnes$Seq_Name, df_communityplasmidgnes$DASTool, df_communityplasmidgnes$Bin, sep = "_")
+df_communityplasmidgenes$fa_info <- paste(df_communityplasmidgnes$fa_info, df_communityplasmidgnes$plasmid, df_communityplasmidgnes$genes, df_communityplasmidgnes$tsv, sep = "_")
+df_communityplasmidgenes$Contig <- paste(df_communityplasmidgnes$Contig, df_communityplasmidgnes$bp_length, sep = "_")
+
+
+#then we need to get rid of the extra columns that we do not need
+df_communityplasmidgnes <- subset(df_communityplasmidgnes, select = -c(DASTool, plasmid, genes, tsv, bp_length)) #invalid argument need to fix
+rm(df_communityplasmidgnes)
+#view to make sure it looks good
+```
+
+### Creating dataframe of plasmid summary
+
+```{r creating data frame of plasmid summary}
+#2. plasmid summary
+#need to create dataframe
+df_plasmidsum <- data.frame(plasmid_summary)
+
+#split the first column called gene into multiple columns
+df_plasmidsum <- df_plasmidsum %>% separate(seq_name, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length'))
+
+#now we are going to mutate the combine the columns together
+df_plasmidsum$Seq_Name <- paste(df_plasmidsum$Seq_Name, df_plasmidsum$DASTool, df_plasmidsum$Bin, sep = "_")
+df_plasmidsum$fa_info <- paste(df_plasmidsum$fa_info, df_plasmidsum$plasmid, df_plasmidsum$genes, df_plasmidsum$tsv, sep = "_")
+df_plasmidsum$Contig <- paste(df_plasmidsum$Contig, df_plasmidsum$bp_length, sep = "_")
+
+#then we need to get rid of the extra columns that we do not need
+df_plasmidsum <- subset(df_plasmidsum, select = -c(DASTool, plasmid, genes, tsv, bp_length)) 
+
+#view to make sure it looks good
+
+```
+
+### Creating virus genes dataframe
+
+```{r create virus genes dataframe}
+#3. virus genes
+#need to create dataframe
+df_virusgenes <- data.frame(virus_genes)
+
+#split the first column called gene into multiple columns
+df_virusgenes <- df_virusgenes %>% separate(gene, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
+
+#now we are going to mutate the combine the columns together
+df_virusgenes$Seq_Name <- paste(df_virusgenes$Seq_Name, df_virusgenes$DASTool, df_virusgenes$Bin, sep = "_")
+df_virusgenes$fa_info <- paste(df_virusgenes$fa_info, df_virusgenes$virus, df_virusgenes$genes, df_virusgenes$tsv, sep = "_")
+df_virusgenes$Contig <- paste(df_virusgenes$Contig, df_virusgenes$bp_length, sep = "_")
+
+#then we need to get rid of the extra columns that we do not need
+df_virusgenes <- subset(df_virusgenes, select = -c(DASTool, virus, genes, tsv, bp_length)) #invalid argument need to fix
+
+#view to make sure it looks good
+```
+
+### Creating virus summary dataframe
+
+```{r creating virus summary dataframe}
+#4. virus summary
+#need to create dataframe
+df_virussum <- data.frame(virus_summary)
+
+#split the first column called gene into multiple columns
+df_virussum <- df_virussum %>% separate(seq_name, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length'))
+
+#now we are going to mutate the combine the columns together
+df_virussum$Seq_Name <- paste(df_virussum$Seq_Name, df_virussum$DASTool, df_virussum$Bin, sep = "_")
+df_virussum$fa_info <- paste(df_virussum$fa_info, df_virussum$virus, df_virussum$genes, df_virussum$tsv, sep = "_")
+df_virussum$Contig <- paste(df_virussum$Contig, df_virussum$bp_length, sep = "_")
+
+#then we need to get rid of the extra columns that we do not need
+df_virussum <- subset(df_virussum, select = -c(DASTool, virus, genes, tsv, bp_length)) 
+
+#view to make sure it looks good
+```
