@@ -2,9 +2,53 @@
 title: "individual_assembly"
 author: "sophiaaredas"
 date: "2023-10-30"
-output: html_document
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    highlight: default
+    keep_md: yes
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  pdf_document:
+    toc: yes
+editor_options:
+  chunk_output_type: console
 ---
+```{=html}
+<style>
+pre code, pre, code {
+  white-space: pre !important;
+  overflow-x: scroll !important;
+  word-break: keep-all !important;
+  word-wrap: initial !important;
+}
+</style>
+```
+```{r setup, include=FALSE}
+# For width of code chunks and scroll bar
+options(width=250)
+knitr::opts_chunk$set(eval = TRUE,
+                      echo = TRUE,
+                      include = TRUE,
+                      warning = FALSE,
+                      collapse = FALSE,
+                      message = FALSE,
+                      dpi=200, dev = "png",
+                      engine = "R", # Chunks will always have R code, unless noted
+                      error = TRUE,
+                      fig.path="/local/workdir/sna49/SA_Fall2023_Phage_Rotation/figures/",
+                      fig.align = "center")
+```
 
+```{r load-packages}
+# Efficiently load packages
+pacman::p_load(readr, stringr, tidyr, tidyverse, dplyr, ggplot2, tidytext, scales, wesanderson, ggpubr, wacolors, rcartocolor, treeio, ggtreeExtra, phyloseq, ggtree, ggstar, install = FALSE)
+```
 ## Final Individual Community Analysis
 
 #### So our first analysis with geNomad was with our MAG files which are short reads binned together to make MAGs
@@ -44,7 +88,7 @@ done
 
 #within that directory you will notice that all files have an ending with .tsv, but we will concatenate all files to end in their respective .txt file
 
-cd sum_directory #make sure you are in sum_directory
+cd indiv_sum_directory/ #make sure you are in sum_directory
 
 #so now we will combine the output concatenated summary files into a long list and we will add a column that will specify the filename for each row
 
@@ -53,26 +97,28 @@ cd sum_directory #make sure you are in sum_directory
 
 #so you could make the .tsv files into a long list of .txt but I will be making them into .tsv files so I can analyze them in rstudio later 
 #1. creating long list of all plasmid genes
-awk 'NR==1{print $0" filename" }' *.fa_plasmid_genes.tsv > plasmid_genes.tsv
+awk 'NR==1{print $0" filename" }' *.fa_plasmid_genes.tsv > indiv_plasmid_genes.tsv
   #NR==1: checking to see if the current record number is 1, so it is processing first line aka the header of each file
   #print $0: filename: if the condition is met it will print the entire line ('$0') followed by space and string called "filename"
-awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_plasmid_genes.tsv >> plasmid_genes.tsv
+awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_plasmid_genes.tsv >> indiv_plasmid_genes.tsv
   #FNR>1: checks to see if current record number within the current file is greater than 1, skips the first line or the header of each input file
   #{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' : for reocrds that meet these conditions, it will modify the "filename" and remove teh directory path and then print modify 'filename' followed by entire line ('$0')
   
 #2. creating long list of all plasmid summary
-awk 'NR==1{print $0" filename" }' *.fa_plasmid_summary.tsv > plasmid_summary.tsv
-awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_plasmid_summary.tsv >> plasmid_summary.tsv
+awk 'NR==1{print $0" filename" }' *.fa_plasmid_summary.tsv > indiv_plasmid_summary.tsv
+awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_plasmid_summary.tsv >> indiv_plasmid_summary.tsv
 
 #3. creating long list of all virus genes
-awk 'NR==1{print $0" filename" }' *.fa_virus_genes.tsv > virus_genes.tsv
-awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_virus_genes.tsv >> virus_genes.tsv
+awk 'NR==1{print $0" filename" }' *.fa_virus_genes.tsv > indiv_virus_genes.tsv
+awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_virus_genes.tsv >> indiv_virus_genes.tsv
  
 #4. creating long list of all virus summary
-awk 'NR==1{print $0" filename" }' *.fa_virus_summary.tsv > virus_summary.tsv
-awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_virus_summary.tsv >> virus_summary.tsv
+awk 'NR==1{print $0" filename" }' *.fa_virus_summary.tsv > indiv_virus_summary.tsv
+awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_virus_summary.tsv >> indiv_virus_summary.tsv
 
 #at this point we have successfully created our long lists of data of plasmid and phage information and we can now begin our Rstudio analysis
+
+#then these 4 "concatenated"/ merged files are moved to indiv_sum_directory/4_cat_files
 
 ```
 
@@ -80,19 +126,19 @@ awk 'FNR>1{ sub(/\/[^\/]+$/, "", FILENAME); print FILENAME, $0 }' *.fa_virus_sum
 
 ```{r loading final individual summary files produced by geNomad}
 #set working directory
-setwd("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/genomad_output_final_indiv_assemblies/sum_directory/final_concatenated")
+setwd("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/genomad_output_final_indiv_assemblies/indiv_sum_directory/4_cat_files")
 
 #1. looking at plasmid genes
-community_plasmid_genes <- read.table(file = "plasmid_genes.tsv", sep ="\t", header = TRUE)
+indiv_plasmid_genes <- read.table(file = "/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/genomad_output_final_indiv_assemblies/indiv_sum_directory/4_cat_files/indiv_plasmid_genes.tsv", sep ="\t", header = TRUE)
 
 #2. looking at plasmid summary 
-community_plasmid_summary <- read.table(file = "plasmid_summary.tsv", sep ="\t", header = TRUE)
+indiv_plasmid_summary <- read.table(file = "/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/genomad_output_final_indiv_assemblies/indiv_sum_directory/4_cat_files/indiv_plasmid_summary.tsv", sep ="\t", header = TRUE)
 
 #3 looking at virus genes
-community_virus_genes <- read.table(file = "virus_genes.tsv", sep ="\t", header = TRUE)
+indiv_virus_genes <- read.table(file = "/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/genomad_output_final_indiv_assemblies/indiv_sum_directory/4_cat_files/indiv_virus_genes.tsv",quote="", sep ="\t", header = TRUE)
 
 #4 looking at virus summary
-community_virus_summary <- read.table(file = "virus_summary.tsv", sep ="\t", header = TRUE)
+indiv_virus_summary <- read.table(file = "/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/genomad_output_final_indiv_assemblies/indiv_sum_directory/4_cat_files/indiv_virus_summary.tsv",quote="", sep ="\t", header = TRUE)
 
 ```
 
@@ -103,21 +149,20 @@ community_virus_summary <- read.table(file = "virus_summary.tsv", sep ="\t", hea
 ```{r create dataframe of plasmid genes}
 #1. plasmid genes
 #need to create dataframe
-df_communityplasmidgenes <- data.frame(community_plasmid_genes)
+df_indiv_plasmid_genes <- data.frame(indiv_plasmid_genes)
 
 #split the first column called gene into multiple columns
 #because there is so much going on with the column name we are going to separate each word into its own column and then mutate it together (dont be alarmed)
-df_communityplasmidgenes <- df_communityplasmidgenes %>% separate(gene, c('Final', 'Seq_Name', '', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
+df_indiv_plasmid_genes <- df_indiv_plasmid_genes %>% separate(gene, c('Final', 'Seq_Name', 'Name', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
 
 #now we are going to mutate the combine the columns together
-df_communityplasmidgenes$Seq_Name <- paste(df_communityplasmidgnes$Seq_Name, df_communityplasmidgnes$DASTool, df_communityplasmidgnes$Bin, sep = "_")
-df_communityplasmidgenes$fa_info <- paste(df_communityplasmidgnes$fa_info, df_communityplasmidgnes$plasmid, df_communityplasmidgnes$genes, df_communityplasmidgnes$tsv, sep = "_")
-df_communityplasmidgenes$Contig <- paste(df_communityplasmidgnes$Contig, df_communityplasmidgnes$bp_length, sep = "_")
+df_indiv_plasmid_genes$Final <- paste(df_indiv_plasmid_genes$Final, df_indiv_plasmid_genes$Seq_Name, df_indiv_plasmid_genes$Name, sep = "_")
+df_indiv_plasmid_genes$fa_info <- paste(df_indiv_plasmid_genes$fa_info, df_indiv_plasmid_genes$plasmid, df_indiv_plasmid_genes$genes, df_indiv_plasmid_genes$tsv, sep = "_")
+df_indiv_plasmid_genes$Contig <- paste(df_indiv_plasmid_genes$Contig, df_indiv_plasmid_genes$bp_length, sep = "_")
 
 
 #then we need to get rid of the extra columns that we do not need
-df_communityplasmidgnes <- subset(df_communityplasmidgnes, select = -c(DASTool, plasmid, genes, tsv, bp_length)) #invalid argument need to fix
-rm(df_communityplasmidgnes)
+df_indiv_plasmid_genes <- subset(df_indiv_plasmid_genes, select = -c(Seq_Name, Name, plasmid, genes, tsv)) 
 #view to make sure it looks good
 ```
 
@@ -126,18 +171,18 @@ rm(df_communityplasmidgnes)
 ```{r creating data frame of plasmid summary}
 #2. plasmid summary
 #need to create dataframe
-df_plasmidsum <- data.frame(plasmid_summary)
+df_indiv_plasmid_sum <- data.frame(indiv_plasmid_summary)
 
 #split the first column called gene into multiple columns
-df_plasmidsum <- df_plasmidsum %>% separate(seq_name, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length'))
+df_indiv_plasmid_sum <- df_indiv_plasmid_sum %>% separate(seq_name, c('Final', 'Seq_Name', 'Name', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length'))
 
 #now we are going to mutate the combine the columns together
-df_plasmidsum$Seq_Name <- paste(df_plasmidsum$Seq_Name, df_plasmidsum$DASTool, df_plasmidsum$Bin, sep = "_")
-df_plasmidsum$fa_info <- paste(df_plasmidsum$fa_info, df_plasmidsum$plasmid, df_plasmidsum$genes, df_plasmidsum$tsv, sep = "_")
-df_plasmidsum$Contig <- paste(df_plasmidsum$Contig, df_plasmidsum$bp_length, sep = "_")
+df_indiv_plasmid_sum$Seq_Name <- paste(df_indiv_plasmid_sum$Final, df_indiv_plasmid_sum$Seq_Name, df_indiv_plasmid_sum$Name, sep = "_")
+df_indiv_plasmid_sum$fa_info <- paste(df_indiv_plasmid_sum$fa_info, df_indiv_plasmid_sum$plasmid, df_indiv_plasmid_sum$genes, df_indiv_plasmid_sum$tsv, sep = "_")
+df_indiv_plasmid_sum$Contig <- paste(df_indiv_plasmid_sum$Contig, df_indiv_plasmid_sum$bp_length, sep = "_")
 
 #then we need to get rid of the extra columns that we do not need
-df_plasmidsum <- subset(df_plasmidsum, select = -c(DASTool, plasmid, genes, tsv, bp_length)) 
+df_indiv_plasmid_sum <- subset(df_indiv_plasmid_sum, select = -c(Final, Name, plasmid, genes, tsv)) 
 
 #view to make sure it looks good
 
@@ -148,18 +193,18 @@ df_plasmidsum <- subset(df_plasmidsum, select = -c(DASTool, plasmid, genes, tsv,
 ```{r create virus genes dataframe}
 #3. virus genes
 #need to create dataframe
-df_virusgenes <- data.frame(virus_genes)
+df_indiv_virus_genes <- data.frame(indiv_virus_genes)
 
 #split the first column called gene into multiple columns
-df_virusgenes <- df_virusgenes %>% separate(gene, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
+df_indiv_virus_genes <- df_indiv_virus_genes %>% separate(gene, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
 
 #now we are going to mutate the combine the columns together
-df_virusgenes$Seq_Name <- paste(df_virusgenes$Seq_Name, df_virusgenes$DASTool, df_virusgenes$Bin, sep = "_")
-df_virusgenes$fa_info <- paste(df_virusgenes$fa_info, df_virusgenes$virus, df_virusgenes$genes, df_virusgenes$tsv, sep = "_")
-df_virusgenes$Contig <- paste(df_virusgenes$Contig, df_virusgenes$bp_length, sep = "_")
+df_indiv_virus_genes$Seq_Name <- paste(df_indiv_virus_genes$Seq_Name, df_indiv_virus_genes$DASTool, df_indiv_virus_genes$Bin, sep = "_")
+df_indiv_virus_genes$fa_info <- paste(df_indiv_virus_genes$fa_info, df_indiv_virus_genes$virus, df_indiv_virus_genes$genes, df_indiv_virus_genes$tsv, sep = "_")
+df_indiv_virus_genes$Contig <- paste(df_indiv_virus_genes$Contig, df_indiv_virus_genes$bp_length, sep = "_")
 
 #then we need to get rid of the extra columns that we do not need
-df_virusgenes <- subset(df_virusgenes, select = -c(DASTool, virus, genes, tsv, bp_length)) #invalid argument need to fix
+df_indiv_virus_genes <- subset(df_indiv_virus_genes, select = -c(DASTool, Bin, virus, genes, tsv))
 
 #view to make sure it looks good
 ```
@@ -169,18 +214,75 @@ df_virusgenes <- subset(df_virusgenes, select = -c(DASTool, virus, genes, tsv, b
 ```{r creating virus summary dataframe}
 #4. virus summary
 #need to create dataframe
-df_virussum <- data.frame(virus_summary)
+df_indiv_virus_sum <- data.frame(indiv_virus_summary)
 
 #split the first column called gene into multiple columns
-df_virussum <- df_virussum %>% separate(seq_name, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length'))
+df_indiv_virus_sum <- df_indiv_virus_sum %>% separate(seq_name, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length'))
 
 #now we are going to mutate the combine the columns together
-df_virussum$Seq_Name <- paste(df_virussum$Seq_Name, df_virussum$DASTool, df_virussum$Bin, sep = "_")
-df_virussum$fa_info <- paste(df_virussum$fa_info, df_virussum$virus, df_virussum$genes, df_virussum$tsv, sep = "_")
-df_virussum$Contig <- paste(df_virussum$Contig, df_virussum$bp_length, sep = "_")
+df_indiv_virus_sum$Seq_Name <- paste(df_indiv_virus_sum$Seq_Name, df_indiv_virus_sum$DASTool, df_indiv_virus_sum$Bin, sep = "_")
+df_indiv_virus_sum$fa_info <- paste(df_indiv_virus_sum$fa_info, df_indiv_virus_sum$virus, df_indiv_virus_sum$genes, df_indiv_virus_sum$tsv, sep = "_")
+df_indiv_virus_sum$Contig <- paste(df_indiv_virus_sum$Contig, df_indiv_virus_sum$bp_length, sep = "_")
 
 #then we need to get rid of the extra columns that we do not need
-df_virussum <- subset(df_virussum, select = -c(DASTool, virus, genes, tsv, bp_length)) 
+df_indiv_virus_sum <- subset(df_indiv_virus_sum, select = -c(DASTool, virus, genes, tsv, bp_length)) 
 
 #view to make sure it looks good
 ```
+
+#### title
+```{r}
+#now that we have finally parsed through our datafiles we want to create a figure that will show us how genome size is correlated to sample type. 
+  # x axis: .22 um or 3.0
+  # y axis: length/ Mbp
+
+#according the meta file, the free samples are even and the particle samples are odd
+
+#we will load the metafile into our working directory and then visualize the box plot 
+
+#load in the metadata file 
+assembly_meta <- read.csv("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/final_indiv_assemblies/metadata.csv")
+
+#now lets subset the data
+assembly_meta <- subset(assembly_meta, select = -c(names,lakesite,limnion,replicate,month,year,nuc_acid_type,project,season,names_nofracrep)) 
+
+#now lets make a column that says if it is free = .22 μm or particle = 3.0 μm
+assembly_meta <- assembly_meta %>% 
+  mutate(filter_size = case_when(
+    fraction == "Free" ~ "0.22 μm",
+    fraction == "Particle" ~ "3.0 μm"
+  ))
+
+#ok now I am not sure what is the total length of the reads. Like is the sample_total_read_count just the number of reads? Or is it number of total reads * average length? 
+
+#I think I will try multiplying the number of total seq reads by average length 
+assembly_meta <- assembly_meta %>% 
+  mutate(
+    sample_total_read_count = as.numeric(sample_total_read_count),
+    avg_read_length = as.numeric(avg_read_length),
+    estimate_bp_length = sample_total_read_count * avg_read_length
+    )
+
+#then lets divide the estimate_bp_length by 1 million
+assembly_meta <- assembly_meta %>% 
+  mutate(length_mb = estimate_bp_length / 1000000)
+
+#assuming everything is ok lets plot
+mbp <- ggplot(assembly_meta, aes(x = filter_size, y = length_mb, fill = fraction))+
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter() +
+  scale_fill_carto_d(palette = "Geyser")+
+  theme_classic()
+
+mbp
+
+#do 
+#ok based on the looks of it I do not think that I plotted this correctly the sizes look roughly equal???
+
+```
+
+```{r normalizing plasmid and phage gene amounts that are found on each contig to a normalized bin abundance}
+#individual asssembly normalizing
+group by sample id (with indiv_plasmid genes), ocunt n_genes and divide by assembly size to get number of genes per Mb and then plot
+```
+
