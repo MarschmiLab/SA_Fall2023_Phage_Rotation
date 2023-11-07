@@ -1,0 +1,1139 @@
+---
+title: "SA Phage Rotation Project"
+author: "Sophia Aredas"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    highlight: default
+    keep_md: yes
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  pdf_document:
+    toc: yes
+editor_options:
+  chunk_output_type: console
+---
+
+```{=html}
+<style>
+pre code, pre, code {
+  white-space: pre !important;
+  overflow-x: scroll !important;
+  word-break: keep-all !important;
+  word-wrap: initial !important;
+}
+</style>
+```
+```{r setup, include=FALSE}
+# For width of code chunks and scroll bar
+options(width=250)
+knitr::opts_chunk$set(eval = TRUE,
+                      echo = TRUE,
+                      include = TRUE,
+                      warning = FALSE,
+                      collapse = FALSE,
+                      message = FALSE,
+                      dpi=200, dev = "png",
+                      engine = "R", # Chunks will always have R code, unless noted
+                      error = TRUE,
+                      fig.path="/local/workdir/sna49/SA_Fall2023_Phage_Rotation/figures/",
+                      fig.align = "center")
+```
+
+11:39
+
+```{r load-packages}
+# Efficiently load packages
+pacman::p_load(readr, stringr, tidyr, tidyverse, dplyr, ggplot2, tidytext, scales, wesanderson, ggpubr, wacolors, rcartocolor, treeio, ggtreeExtra, phyloseq, ggtree, ggstar, install = FALSE)
+```
+
+### Load summary files produced by geNomad
+
+```{r loading summary files produced by geNomad}
+#set working directory
+setwd("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/4_concatenated_files/")
+
+#1. looking at plasmid genes
+setwd("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/4_concatenated_files/")
+plasmid_genes <- read.table(file = "plasmid_genes.tsv", sep ="\t", header = TRUE)
+
+#2. looking at plasmid summary 
+setwd("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/4_concatenated_files/")
+plasmid_summary <- read.table(file = "plasmid_summary.tsv", sep ="\t", header = TRUE)
+
+#3 looking at virus genes
+setwd("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/4_concatenated_files/")
+virus_genes <- read.table(file = "virus_genes.tsv", sep ="\t", header = TRUE)
+
+#4 looking at virus summary
+setwd("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/4_concatenated_files/")
+virus_summary <- read.table(file = "virus_summary.tsv", sep ="\t", header = TRUE)
+
+```
+
+## Creating data frames so that we can analyze the geNomad outputs
+
+### Creating dataframe of plasmid genes
+
+```{r create dataframe of plasmid genes}
+#1. plasmid genes
+#need to create dataframe
+df_plasmidgenes <- data.frame(plasmid_genes)
+
+#split the first column called gene into multiple columns
+#because there is so much going on with the column name we are going to separate each word into its own column and then mutate it together (dont be alarmed)
+df_plasmidgenes <- df_plasmidgenes %>% separate(gene, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
+
+#now we are going to mutate the combine the columns together
+df_plasmidgenes$Seq_Name <- paste(df_plasmidgenes$Seq_Name, df_plasmidgenes$DASTool, df_plasmidgenes$Bin, sep = "_")
+df_plasmidgenes$fa_info <- paste(df_plasmidgenes$fa_info, df_plasmidgenes$plasmid, df_plasmidgenes$genes, df_plasmidgenes$tsv, sep = "_")
+df_plasmidgenes$Contig <- paste(df_plasmidgenes$Contig, df_plasmidgenes$bp_length, sep = "_")
+
+
+#then we need to get rid of the extra columns that we do not need
+df_plasmidgenes <- subset(df_plasmidgenes, select = -c(DASTool, plasmid, genes, tsv, bp_length)) #invalid argument need to fix
+
+#view to make sure it looks good
+```
+
+### Creating dataframe of plasmid summary
+
+```{r creating data frame of plasmid summary}
+#2. plasmid summary
+#need to create dataframe
+df_plasmidsum <- data.frame(plasmid_summary)
+
+#split the first column called gene into multiple columns
+df_plasmidsum <- df_plasmidsum %>% separate(seq_name, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length'))
+
+#now we are going to mutate the combine the columns together
+df_plasmidsum$Seq_Name <- paste(df_plasmidsum$Seq_Name, df_plasmidsum$DASTool, df_plasmidsum$Bin, sep = "_")
+df_plasmidsum$fa_info <- paste(df_plasmidsum$fa_info, df_plasmidsum$plasmid, df_plasmidsum$genes, df_plasmidsum$tsv, sep = "_")
+df_plasmidsum$Contig <- paste(df_plasmidsum$Contig, df_plasmidsum$bp_length, sep = "_")
+
+#then we need to get rid of the extra columns that we do not need
+df_plasmidsum <- subset(df_plasmidsum, select = -c(DASTool, plasmid, genes, tsv, bp_length)) 
+
+#view to make sure it looks good
+
+```
+
+### Creating virus genes dataframe
+
+```{r create virus genes dataframe}
+#3. virus genes
+#need to create dataframe
+df_virusgenes <- data.frame(virus_genes)
+
+#split the first column called gene into multiple columns
+df_virusgenes <- df_virusgenes %>% separate(gene, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
+
+#now we are going to mutate the combine the columns together
+df_virusgenes$Seq_Name <- paste(df_virusgenes$Seq_Name, df_virusgenes$DASTool, df_virusgenes$Bin, sep = "_")
+df_virusgenes$fa_info <- paste(df_virusgenes$fa_info, df_virusgenes$virus, df_virusgenes$genes, df_virusgenes$tsv, sep = "_")
+df_virusgenes$Contig <- paste(df_virusgenes$Contig, df_virusgenes$bp_length, sep = "_")
+
+#then we need to get rid of the extra columns that we do not need
+df_virusgenes <- subset(df_virusgenes, select = -c(DASTool, virus, genes, tsv, bp_length)) #invalid argument need to fix
+
+#view to make sure it looks good
+```
+
+### Creating virus summary dataframe
+
+```{r creating virus summary dataframe}
+#4. virus summary
+#need to create dataframe
+df_virussum <- data.frame(virus_summary)
+
+#split the first column called gene into multiple columns
+df_virussum <- df_virussum %>% separate(seq_name, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length'))
+
+#now we are going to mutate the combine the columns together
+df_virussum$Seq_Name <- paste(df_virussum$Seq_Name, df_virussum$DASTool, df_virussum$Bin, sep = "_")
+df_virussum$fa_info <- paste(df_virussum$fa_info, df_virussum$virus, df_virussum$genes, df_virussum$tsv, sep = "_")
+df_virussum$Contig <- paste(df_virussum$Contig, df_virussum$bp_length, sep = "_")
+
+#then we need to get rid of the extra columns that we do not need
+df_virussum <- subset(df_virussum, select = -c(DASTool, virus, genes, tsv, bp_length)) 
+
+#view to make sure it looks good
+
+
+```
+
+## Combining Gus's data frame and mine together to map the bin to the fraction class
+
+### The names on the 346 MAG files are from the filtration steps. The free coassembly was done from the free filtration, particle coassembly was done from the particle, and DASTools was presumably done from the whole filtration
+
+```{r match Gus and my files together to map the bin to the fraction_class}
+#but the names on each of the files are meaningless. The file could be like free-coassembly bin 90 but we do not know if they are actually FL, PA, or generalists.
+#Thanks to Gus he provided MAG_Growth_Fraction.RData which there were calculations to see if bins prefer to be FL, PA, or Generalists. I will be adding his column into my dataset so that way I am able to compare between bacterial lifestyles
+
+#load in the MAG_Growth_Fraction.RData to your environment
+load("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/MAG_Growth_and_Fraction.RData")
+
+#gsub so that free and particle coassemblies match
+mag_full_df$bin <- gsub("-", "_", mag_full_df$bin)
+
+#join columns together with merge left_join
+merge_virussum_magfull <- left_join(df_virussum, mag_full_df, by = c("Seq_Name" = "bin"))
+merge_plasmidgenes_magfull <- left_join(df_plasmidgenes, mag_full_df, by = c("Seq_Name" = "bin"))
+merge_virusgenes_magfull <- left_join(df_virusgenes, mag_full_df, by = c("Seq_Name" = "bin"))
+merge_plasmidsum_magfull <- left_join(df_plasmidsum, mag_full_df, by = c("Seq_Name" = "bin"))
+```
+
+## Time to visualize
+
+### Plasmid Analysis
+
+#### Relative Abundance of Fraction Class
+
+##### Bar Graph with no percentages just the relative abundance count
+
+```{r relative abundance of fraction_class}
+#i am making a summary df to calculate the sum of fraction_class
+#looking at Gus's MAG_full_df
+#this is the bargraph version with no percentages
+count_magfull <- mag_full_df %>% 
+  group_by(fraction_class) %>% 
+  summarise(count = n(), .groups = "drop")
+
+count_fraction_class <- count_magfull %>% 
+  ggplot(aes(x = fraction_class, y = count, fill = fraction_class))+
+  geom_bar(stat = "identity", position = "dodge")
+  
+count_fraction_class
+```
+
+##### Bar Graph with percentages
+
+```{r percentage bar graph version}
+#this is the percentage bar graph version
+percent_mag_full <- mag_full_df %>% 
+  group_by(fraction_class) %>% 
+  summarise(count = n()) %>% 
+  mutate(percent = count/sum(count))
+
+
+# ggplot(percent_mag_full, aes(x = fraction_class, y = percent, fill = fraction_class, label = scales::percent(percent(stat(count))))) +
+#   geom_bar(stat = "identity") +
+#   geom_text(stat = "identity",
+#             position = position_dodge(.9),
+#             vjust = -0.5,
+#             size = 3) +
+#   labs(x = "Lifestyle", y = "Percent", fill = "Fraction Class") +
+#   theme_minimal(base_size = 14)
+# 
+# percent <- ggplot(percent_mag_full, aes(x = fraction_class, y = percent, fill = fraction_class))+
+#   geom_bar(stat = "identity", position = "dodge")
+# 
+# percent +
+#   scale_y_continuous(labels = scales::percent,
+#                      breaks= scales::pretty_breaks(n = 7))
+
+#then all together
+percent <- ggplot(percent_mag_full, aes(x = fraction_class, y = percent, fill = fraction_class, label = scales::percent(percent)))+
+  geom_col(width = 0.5)+
+  labs(x = "Lifestyle",
+       y = "Percentage of MAGs")+
+  scale_y_continuous(labels = scales::percent,
+                     breaks= scales::pretty_breaks(n = 7))+
+  geom_text(nudge_y = -.03,
+            color = "white",
+            size = 5, 
+            fontface = "bold")+
+ # scale_fill_carto_d(palette = , directino = -1)
+  scale_fill_manual(values=wes_palette(n=3, name="GrandBudapest1"))
+  #scale_fill_brewer(palette = "Dark2")
+percent
+
+#percent + labs(fill = "Lifestyle")
+
+#009392,#39b185,#9ccb86,#e9e29c,#eeb479,#e88471,#cf597e# A tibble: 3 × 2
+ # fraction_class count
+ # <fct>          <int>
+#1 Free              63
+#2 Particle          52
+#3 Generalist       231
+```
+
+##### Visualize the number of plasmid encoded genes and fraction class
+
+###### This is the number of plasmid encoded genes / MAG represented in bar graph form
+
+```{r visualize plasmid n_genes and fraction_class}
+#barplot to visualize (from the plasmid summary file) to see from which bacterial lifestyle has more or less encoding genes
+#n_genes just refers to the number of genes encoded by the sequence but does not have to necessarily number of plasmid genes 
+#n_genes also looks at the number of genes encoded by each contig within the bin so there are lots of instances in which there are multiple plasmid hits from a bin thats why the number does not exactly equal 346
+number_of_genes <- ggplot(merge_plasmidsum_magfull, aes(x = fraction_class, y = n_genes, fill = Phylum))+
+  geom_bar(position = "dodge", stat = "identity") +
+  scale_fill_carto_d(palette = "Geyser")+
+  xlab("Lifestyle")+
+  ylab("Number of Plasmid Genes Encoded")+
+  theme_classic()
+
+number_of_genes 
+
+#looking at the number of peg divided by mag but represented in a bar graph form
+#count all the genes in the bin 
+peg <- merge_plasmidsum_magfull
+total_PEG_bin <- peg %>%
+  group_by(Seq_Name, Bin, n_genes, fraction_class, Phylum) %>% 
+  summarise(
+    Count_Genes = n(),
+    .groups = "drop",
+    total_n_genes = sum(n_genes))
+
+
+#now count the number of seq_names 
+count_peg_seq <- total_PEG_bin %>% 
+  group_by(Seq_Name) %>% 
+  mutate(Count_Seq_name = n()) 
+
+count_peg_seq
+#now we are going to divide by the plasmid gene type by the bin
+count_peg_seq$genes_per_bin <- count_peg_seq$total_n_genes / count_peg_seq$Count_Seq_name
+
+peg_phy <- ggplot(count_peg_seq, aes(x = fraction_class, y = genes_per_bin, fill = Phylum))+
+  geom_bar(position = "dodge", stat = "identity") +
+  scale_fill_carto_d(palette = "Geyser")+
+  xlab("Lifestyle")+
+  ylab("Number of Plasmid Genes Encoded / MAG ")+
+  theme_classic()
+
+peg_phy
+
+peg_per_bin <- ggplot(count_peg_seq, aes(x = fraction_class, y = genes_per_bin, fill = fraction_class))+
+  geom_boxplot(outlier.alpha = 0, alpha = .8)+
+  geom_point()+
+  #ggtitle("fraction class ~ genes/bin")+
+  #scale_fill_carto_d(palette = "Geyser")+
+  xlab("Lifestyle")+
+  ylab("Number of Plasmid Encoded Genes / MAG")+
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE)+
+  #scale_fill_brewer(palette = "Dark2")
+ # coord_cartesian(ylim = quantile(count_peg_seq$genes_per_bin, c(0.01,0.999)))+
+# #  stat_compare_means(label.y = c(1,1,1), tip.length = .01, comparisons = list(
+#     c("Free", "Particle"),
+#     c("Free", "Generalist"),
+#     c("Particle", "Generalist")),
+#                      method = "",
+#                      label = "p.signif", hide.ns = FALSE)+
+  theme_classic()
+  #theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+
+##### Number of plasmid encoded genes represented by a box plot
+
+```{r}
+#instead lets look at the number of genes found on plasmids as a box plot instead of bar graph
+#relative abundance NOT divided by MAG
+number_of_genes <- ggplot(merge_plasmidsum_magfull, aes(x = fraction_class, y = n_genes, fill = fraction_class))+
+  geom_boxplot(outlier.alpha = 0, alpha = .8)+
+  xlab("Lifestyle")+
+  ylab("Number of Plasmid Genes Encoded")+
+  scale_fill_manual(values=wes_palette(n=3, name="GrandBudapest1"))+
+  coord_cartesian(ylim = quantile(merge_plasmidsum_magfull$n_genes, c(0.01,0.99)))+
+  stat_compare_means(label.y = c(11,15,13), tip.length = .01, comparisons = list(
+    c("Free", "Particle"),
+    c("Free", "Generalist"),
+    c("Particle", "Generalist")),
+                     method = "wilcox.test", paired = FALSE,
+                     label = "p.signif", hide.ns = FALSE)+
+  #scale_y_continuous(limits = quantile(merge_plasmidsum_magfull$n_genes, c(0.05,0.95)))+
+  theme_classic()
+
+number_of_genes 
+
+
+#now lets divide the number of genes by MAG (AKA lest visualize the number of plasmid encoded genes per bin)
+
+#count all the genes in the bin 
+peg <- merge_plasmidsum_magfull
+total_PEG_bin <- peg %>%
+  group_by(Seq_Name, Bin, n_genes, fraction_class, Phylum) %>% 
+  summarise(
+    Count_Genes = n(),
+    .groups = "drop",
+    total_n_genes = sum(n_genes))
+
+
+#now count the number of seq_names 
+count_peg_seq <- total_PEG_bin %>% 
+  group_by(Seq_Name) %>% 
+  mutate(Count_Seq_name = n()) 
+
+count_peg_seq
+#now we are going to divide by the conjugation gene type by the bin
+count_peg_seq$genes_per_bin <- count_peg_seq$total_n_genes / count_peg_seq$Count_Seq_name
+
+#now that we have ourgenes/sequence name we can plot our data to see what is happening
+peg_per_bin <- ggplot(count_peg_seq, aes(x = fraction_class, y = genes_per_bin, fill = fraction_class))+
+  geom_boxplot(outlier.alpha = 0, alpha = .8)+
+  geom_point()+
+  #ggtitle("fraction class ~ genes/bin")+
+  #scale_fill_carto_d(palette = "Geyser")+
+  xlab("Lifestyle")+
+  ylab("Number of Plasmid Encoded Genes / MAG")+
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE)+
+  #scale_fill_brewer(palette = "Dark2")
+#coord_cartesian(ylim = quantile(count_peg_seq$genes_per_bin, c(0.001,0.999)))+
+#stat_compare_means(label.y = c(5,5,5), tip.length = .01, comparisons = list(
+    # c("Free", "Particle"),
+    # c("Free", "Generalist"),
+    # c("Particle", "Generalist")),
+    #                  method = ,
+    #                  label = "p.signif", hide.ns = FALSE)+
+  theme_classic()
+  #theme(plot.title = element_text(hjust = 0.5))
+peg_per_bin
+```
+
+#### Number of plasmid encoded genes divided by length
+
+```{r number of plasmid encoded genes divided by length}
+#after talking with Marian it would be interesting to see how the number of genes per contig in the MAG vary according to length. Trying to get at the vibes of length and genome size is correlated with each other
+#looking at the merge_plasmid_sum_magfull because it seems that its more finalized in terms of bin and contigs?
+merge_plasmidsum_magfull$n_genes_per_length <- merge_plasmidsum_magfull$n_genes / merge_plasmidsum_magfull$length
+
+
+plas_n_genes_length <- ggplot(merge_plasmidsum_magfull, aes(x = length, y = n_genes, fill = fraction_class))+
+  geom_point(size = 2, shape = 23) +
+  scale_x_log10() + 
+  #scale_x_reordered() +
+ # facet_wrap(~fraction_class, scale ="free_x")+
+  xlab("Length of Plasmid Encoded Genes")+
+  ylab("Number of Plasmid Encoded Genes")+
+  theme_classic()
+
+plas_n_genes_length
+```
+
+#### Plasmid score against number of genes
+
+```{r plasmid score and number of genes}
+plas_score_ngenes <- ggplot(merge_plasmidsum_magfull, aes(x = n_genes_per_length, y = plasmid_score, fill = fraction_class))+
+  geom_point(size = 2, shape = 23) +
+  scale_x_log10() + 
+  xlab("Length of Plasmid Encoded Genes")+
+  ylab("Number of Plasmid Encoded Genes")+
+  theme_classic()
+
+plas_score_ngenes
+```
+
+#### Density plot looking at number of plasmid encoded genes/MAG (x axis) and the density (y axis)
+
+```{r density plot of plasmid encoded genes (number of peg per mag)}
+peg_density <- ggplot(count_peg_seq, aes(x = genes_per_bin, color = fraction_class, fill = fraction_class))+
+  geom_density(alpha = 0.3)+
+  xlab("Number of Plasmid Encoded Genes / MAG")+
+  ylab("Density")+
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE)+
+  theme_classic()
+
+peg_density
+
+peg_per_bin <- ggplot(count_peg_seq, aes(x = fraction_class, y = genes_per_bin, fill = fraction_class))+
+  geom_boxplot(outlier.alpha = 0, alpha = .8)+
+  geom_point()+
+  #ggtitle("fraction class ~ genes/bin")+
+  #scale_fill_carto_d(palette = "Geyser")+
+  xlab("Lifestyle")+
+  ylab("Number of Plasmid Encoded Genes / MAG")+
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE)+
+  #scale_fill_brewer(palette = "Dark2")
+#coord_cartesian(ylim = quantile(count_peg_seq$genes_per_bin, c(0.001,0.999)))+
+#stat_compare_means(label.y = c(5,5,5), tip.length = .01, comparisons = list(
+    # c("Free", "Particle"),
+    # c("Free", "Generalist"),
+    # c("Particle", "Generalist")),
+    #                  method = ,
+    #                  label = "p.signif", hide.ns = FALSE)+
+  theme_classic()
+  #theme(plot.title = element_text(hjust = 0.5))
+peg_per_bin
+```
+
+#### Visualizing the number of conjugation genes
+
+##### This is just looking at the relative abundance between the 3 lifestyles
+
+```{r visualize conjugation genes}
+#now we will visualize the amount of conjugation genes within the merge_plasmidsum dataframe
+congenee <- merge_plasmidsum_magfull
+#the name congenee just reminds me of the chinese dish congee so the name is really meaningless haha but i am also hungry
+
+congenee <- congenee %>% 
+  filter(!is.na(conjugation_genes)) %>% 
+  mutate(conjugation_gene_count = str_count(conjugation_genes, ";") +1)
+# congenee #you will notice that a new column is added that includes the conjugation_gene_count with its count and omits the <NA>
+# 
+# #we can look at the distribution of conjugation genes found looking at fraction_class and seeing the different phyla represented
+congene_gg_phy <- ggplot(congenee, aes(x = fraction_class, y = conjugation_gene_count, fill = Phylum))+
+  geom_bar(position = "dodge", stat = "identity") +
+  theme_classic()
+# 
+# congene_gg_phy #interesting that proteobacteria is represented in all fractions
+# 
+congene_gg <- ggplot(congenee, aes(x = fraction_class, y = conjugation_gene_count, fill = fraction_class))+
+  geom_bar(position = "dodge", stat = "identity") +
+  theme_classic()
+
+congene_gg
+
+
+total_conj_gene_per_bin <- congenee %>%
+  group_by(Seq_Name, Bin, conj_gene_type, fraction_class) %>%
+  summarise(Count_Genes = n(), .groups = "drop")
+
+
+#now count the number of seq_names
+#remember that we are taking into consideration the kind of conjugation gene in this
+count_seq_name <- total_conj_gene_per_bin %>%
+  group_by(Seq_Name) %>%
+  mutate(Count_Seq_name = n())
+
+count_seq_name
+#now we are going to divide by the conjugation gene type by the bin
+count_seq_name$genes_per_bin <- count_seq_name$Count_Genes / count_seq_name$Count_Seq_name
+```
+
+#### Visualizing conjugation genes divided by MAG
+
+```{r visualize conjugation genes divided by mag}
+congenee <- merge_plasmidgenes_magfull
+congenee <- congenee %>% 
+  filter(!is.na(annotation_conjscan)) %>%  
+  mutate(conj_gene_type = case_when(grepl("trb", annotation_conjscan) ~ "trb genes",
+                                    grepl("vir", annotation_conjscan) ~ "vir genes",
+                                    grepl("MOB", annotation_conjscan) ~ "MOB genes",
+                                    grepl("tra", annotation_conjscan) ~ "tra genes",
+                                    grepl("t4cp1", annotation_conjscan) ~ "tra genes")) %>% 
+  select(Seq_Name, Bin, annotation_conjscan, conj_gene_type, fraction_class)
+
+congenee_gg <- ggplot(congenee, aes(x = conj_gene_type, fill = fraction_class))+
+  geom_bar(stat = "count", position = "dodge")
+congenee_gg
+
+table(congenee$conj_gene_type, congenee$fraction_class)
+  #            Free  Particle  Generalist
+  # MOB genes    1        2          3
+  # tra genes    0        4         33
+  # trb genes    0        0          5
+  # vir genes    1        9         35
+
+# 
+# #now we can visualize the number of conjugation genes per bin
+# #count all the genes in the bin by the conj_gene_type
+total_conj_gene_per_bin <- congenee %>%
+  group_by(Seq_Name, Bin, conj_gene_type, fraction_class) %>%
+  summarise(Count_Genes = n(), .groups = "drop")
+
+
+#now count the number of seq_names 
+#remember that we are taking into consideration the kind of conjugation gene in this
+count_seq_name <- total_conj_gene_per_bin %>% 
+  group_by(Seq_Name) %>% 
+  mutate(Count_Seq_name = n()) 
+
+count_seq_name
+#now we are going to divide by the conjugation gene type by the bin
+count_seq_name$genes_per_bin <- count_seq_name$Count_Genes / count_seq_name$Count_Seq_name
+
+#now that we have ourgenes/sequence name we can plot our data to see what is happening
+conj_genes_per_bin <- ggplot(count_seq_name, aes(x = fraction_class, y = genes_per_bin, fill = conj_gene_type))+
+  geom_bar(stat = "identity", position = "dodge") +
+  #ggtitle("fraction class ~ genes/bin")+
+  #scale_fill_carto_d(palette = "Geyser")+
+  xlab("Lifestyle")+
+  ylab("Number of Conjugation Genes / MAG")+
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE)+
+  #scale_fill_brewer(palette = "Dark2")
+  theme_classic()
+  #theme(plot.title = element_text(hjust = 0.5))
+conj_genes_per_bin
+
+#now lets join the count_seq_name and merge_plasmidsum_magfull data frames together
+merge_plasmidsum_magfull_conjugation <- left_join(merge_plasmidsum_magfull, count_seq_name, by = c("Seq_Name" = "Seq_Name"))
+# Warning message:
+# In left_join(merge_plasmidsum_magfull, count_seq_name, by = c(Seq_Name = "Seq_Name")) :
+#   Detected an unexpected many-to-many relationship between `x` and `y`.
+# ℹ Row 235 of `x` matches multiple rows in `y`.
+# ℹ Row 1 of `y` matches multiple rows in `x`.
+# ℹ If a many-to-many relationship is expected, set `relationship = "many-to-many"` to silence this warning.
+```
+
+### Phage Analysis
+
+#### Number of phage encoded genes per MAG
+
+```{r phage genes divided per MAG}
+
+#now lets divide the number of genes by MAG (AKA lest visualize the number of plasmid encoded genes per bin)
+
+#count all the genes in the bin 
+phab_genes <- merge_virussum_magfull
+total_phab_genes_bin <- phab_genes %>%
+  group_by(Seq_Name, Bin, n_genes, fraction_class) %>% 
+  summarise(
+    Count_Genes = n(),
+    .groups = "drop",
+    total_n_genes = sum(n_genes))
+
+
+#now count the number of seq_names 
+count_phab_seq <- total_phab_genes_bin %>% 
+  group_by(Seq_Name) %>% 
+  mutate(Count_Seq_name = n()) 
+
+count_phab_seq
+#now we are going to divide by the # gene type by the bin
+count_phab_seq$genes_per_bin <- count_phab_seq$total_n_genes / count_phab_seq$Count_Seq_name
+
+#now that we have ourgenes/sequence name we can plot our data to see what is happening
+phab_gene_per_bin <- ggplot(count_phab_seq, aes(x = fraction_class, y = genes_per_bin, fill = fraction_class))+
+  geom_boxplot(outlier.shape = NA, alpha = .8)+
+  geom_point()+
+  #ggtitle("fraction class ~ genes/bin")+
+  #scale_fill_carto_d(palette = "Geyser")+
+  xlab("Lifestyle")+
+  ylab("Number of Phage Encoded Genes / MAG")+
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE)+
+  #scale_fill_brewer(palette = "Dark2")
+  #coord_cartesian(ylim = quantile(count_peg_seq$genes_per_bin, c(0.0001,0.9999)))+
+  stat_compare_means(label.y = c(12,15,25), tip.length = .01, comparisons = list(
+    c("Free", "Particle"),
+    c("Free", "Generalist"),
+    c("Particle", "Generalist")),
+                 method = "wilcox.test", paired = FALSE,
+                 label = "p.signif", hide.ns = FALSE)+
+  
+  #do p adjust for stat compare means and fdr 
+  theme_classic()
+phab_gene_per_bin
+```
+
+#### Bar graph visualizing the number of phage genes and phage taxonomy
+
+```{r looking at the phage taxonomy that is on row and it is separated by ";"}
+#we will delmit so that we can see what phages are present in our dataset 
+#create different variable of the df so that in case we mess up its gonna be ok
+tax_phass <- merge_virussum_magfull
+
+#split the column called taxonomy.filename into multiple columns by the delimiter ";"
+tax_phass <- tax_phass %>% separate(taxonomy.filename, c('Vir_Domain', "Realm", "Kingdom", "Phylum_vir", "Class_cvir", "Order_vir", "Species_vir"))
+
+
+#lets use rbind to combine tax_phass and count_phab_seq
+
+phab_tax_phass_combine <- merge(tax_phass, count_phab_seq)
+
+#now we can visualize the number of phage genes and look at the phage taxonomy
+number_of_phage_genes <- ggplot(phab_tax_phass_combine, aes(x = fraction_class, y = genes_per_bin, fill = Phylum_vir))+
+  geom_bar(position = "dodge", stat = "identity") +
+  scale_fill_carto_d(palette = "Geyser")+
+  xlab("Lifestyle")+
+  ylab("Number of Phage Genes Encoded / MAG")+
+  theme_classic()
+
+number_of_phage_genes 
+```
+
+#### Number of phage encoded genes divided by length
+
+```{r number of phage encoded genes divided by length}
+#after talking with Marian it would be interesting to see how the number of genes per contig in the MAG vary according to length. Trying to get at the vibes of length and genome size is correlated with each other
+#looking at the merge_virussum_magfull because it seems that its more finalized in terms of bin and contigs?
+merge_virussum_magfull$n_genes_per_length <- merge_virussum_magfull$n_genes / merge_virussum_magfull$length
+
+
+phage_n_genes_length <- ggplot(merge_virussum_magfull, aes(x = length, y = n_genes, fill = fraction_class))+
+  geom_point(size = 2, shape = 23) +
+ # scale_x_log10() + 
+  xlab("Length of Phage Encoded Genes")+
+  ylab("Number of Phage Encoded Genes")+
+  theme_classic()
+
+phage_n_genes_length
+```
+
+#### Density plot of phage encoded genes per MAG
+
+```{r Density plot of phage encoded genes per MAG}
+phage_encoded_density <- ggplot(phab_tax_phass_combine, aes(x = genes_per_bin, color = fraction_class, fill = fraction_class))+
+  geom_density(alpha = 0.3)+
+  xlab("Number of Phage Encoded Genes / MAG")+
+  ylab("Density")+
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE)+
+  theme_classic()
+
+phage_encoded_density
+```
+
+#### Looking at bacterial lifestyle (x axis) and the number of phage encoded genes / MAG faceted by phage phylum/ taxonomy
+
+```{r faceting virus phylum and bacteria phylum to see which phages are found in bacteria}
+
+#changing in the phylum_vir column the names "NA" to unclassified
+phab_tax_phass_combine$Phylum_vir[is.na(phab_tax_phass_combine$Phylum_vir)] <- "Unclassified"
+
+#now plotting using a facet to see from the most common phages and where they are present in bacterial phyla 
+#ommitted phages that were present in only one bacterial phylum
+number_of_phage_genes1 <- 
+  phab_tax_phass_combine %>%
+  dplyr::filter(Phylum_vir %in% c("Uroviricota", "Nucleocytoviricota", "Unclassified")) %>%  
+  ggplot(aes(x = Phylum, y = genes_per_bin, fill = Phylum))+
+  facet_wrap(~ Phylum_vir) + 
+  geom_bar(position = "dodge", stat = "identity") +
+ theme_classic() + 
+   theme(
+    axis.title.x = element_blank(),
+    #axis.text.x = element_text(angle = 30, vjust = 1, hjust = 1),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.spacing = unit(2, "lines")
+    )+
+  scale_fill_carto_d(palette = "Geyser")+
+  labs(x = "Lifestyle", 
+       y = "Number of Phage Genes Encoded / MAG");number_of_phage_genes1
+
+
+ #now looking at lifestyle as opposed to bacterial phylum
+number_of_phage_genes2 <- 
+  phab_tax_phass_combine %>%
+  #dplyr::filter(Phylum_vir %in% c("Uroviricota", "Nucleocytoviricota", "Unclassified")) %>%  
+  ggplot(aes(x = Phylum_vir, y = genes_per_bin, fill = Phylum_vir))+
+  facet_wrap(~ fraction_class) + 
+  geom_bar(position = "dodge", stat = "identity") +
+ theme_classic() + 
+   theme(
+    #axis.title.x = element_blank(),
+    #axis.text.x = element_text(angle = 30, vjust = 1, hjust = 1),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.spacing = unit(2, "lines")
+    )+
+  scale_fill_wa_d(palette = "rainier", reverse = FALSE)+
+  #scale_fill_carto_d(palette = "Geyser")+
+  labs(x = "Lifestyle", 
+       y = "Number of Phage Genes Encoded / MAG");number_of_phage_genes2
+
+
+```
+
+### Using GTDBTK to do phylogenetic analysis
+
+#### The code that I used is located in my code directory called gtdbtk.sh
+
+```{bash GTDBTK}
+#To use gtdbtk there is no need to install it as it is a huge download and we already have it on our server located in databases. Please go to /local/workdir/databases/gtdbtk_release214/release214/release214/taxonomy to use this
+source $HOME/miniconda3/bin/activate
+
+#Set GTDBTK_DATA_PATH to new reference db directory, for example
+#if you do gtdbtk-2.1.1 that is the release version for the release207_v2
+#if you want to do the most updated release (to me that seems more reasonable) then you will want to use the gtdbtk-2.3.
+
+conda create -n gtdbtk-2.3.2 -c conda-forge -c bioconda gtdbtk=2.3.2
+
+# To activate this environment, use
+#
+#     $ conda activate gtdbtk-2.3.2
+#
+# To deactivate an active environment, use
+#
+#     $ conda deactivate
+
+#now activate the conda environment so that we can add the stuff to the environment 
+conda activate gtdbtk-2.3.2
+#The conda package is bundled with a script download-db.sh (source) that will automatically download, and extract the GTDB-Tk reference data. The script will be on the system path so simply run:
+#this part takes FOREVER just fyi use screen or something
+download-db.sh
+
+#set path 
+conda env config vars set GTDBTK_DATA_PATH="/home/sna49/miniconda3/envs/gtdbtk-2.3.2/share/gtdbtk-2.3.2/db"
+
+#checking which version just in case (keep in mind this part takes a minute)
+gtdbtk check_install
+
+#created new directory called gtdbtk 
+/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/346_MAGs
+  #I recopied the original 346 MAGs but jsut the .fa version
+  
+#we will now begin to do our analysis with the command called classify_wf
+  #this workflow consists fo 4 steps:
+    #ani_screen: compares our genomes against a MASH database composed of all GTDB representative genoems then verifies the best mash hits using FASTANI which is a method used to estimate average nucleotide identity using alignment free approximate sequence mapping. it is good for finished and draft genomes
+    #identify: uses prodigal and uses HMM mdoels and HMMER package to identify the 120 bacterial and 53 archaeal marker genes used for phylogenetic inference. MSA obtained by aligning amrker gene to respective HMM model
+    #align: concatenates the aligned marker genes and filters the concatenated MSP to approx 5k amino acids
+    #classify: uses pplacer to find the ML placement of each genome in teh gtdbtk reference tree. GTDBTK classifies each genome based on its placment in refernece tree, relative evolutionary divergence, and/or ANI to reference geomes
+    
+    #workflow command: gtdbtk classify_wf --genome_dir <my_genomes> --out_dir <output_dir>
+      #genomes must be in FASTA format but .gz is acceptable which is awesome bc thats what we got
+      
+gtdbtk classify_wf --genome_dir /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/346_MAGs --out_dir classify_gtdbtk_output --mash_db 2.3.2 -x .fa --cpus 100
+#gtdbtk = command
+#classify_wf = pipeline used
+##--genome_dir = pointing to the genome directory or wherever our files are at
+#out_dir = pointing to the output directory
+#classify_gtdbtk_output = this is the output file that is being created
+#--mash_db 2.3.2 = this version of GTDBTK requires that you input the mash_db version (2.3.2 is the one we downloaded). This Using the --mash_db option will indicate to GTDB-Tk the path of the sketched Mash database require for ANI screening.
+  #If no database are available ( i.e. this is the first time running classify ), the --mash_db option will sketch a new Mash database that can be used for subsequent calls.
+#-x .fa = -x means extension files. the files we have are .fa
+#--cpus 100 = these are the cpus that are being used by the server to calculate
+
+#general notes about downloading
+  #does not seem to like the .gz files 
+  #instead I just did the original .fa files 
+
+  
+#so far GTDBTK gives us the msa alignment when we use the code above, this can be used for an unrooted tree which is totally fine
+
+#but we can also try the de novo wf to give us a rooted tree and we would use planctomycetes as our outgroup
+gtdbtk de_novo_wf --genome_dir /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/346_MAGs --outgroup_taxon p__Chloroflexota --bacteria  --out_dir de_novo_wf_test1 -x .fa --cpus 100
+```
+
+#### Installing fastree
+
+```{bash installing fast tree}
+#There are 2 previous version(s) available. Any version can be accessed either by typing full path, or by adding it to the PATH and then typing its name at the prompt. NOTE: you need to set PATH only once per login/session.
+
+#add to path
+export PATH=/programs/FastTree-2.1.11:$PATH
+
+#then type name to get the program activated
+FastTree
+
+# http://www.microbesonline.org/fasttree/#Usage link for running the code 
+
+#when looking at our results we see that the files are in AA format
+chmod +rwx Data/gtdbtk/classify_gtdbtk_output/align
+chmod +rwx  data/MAG_gtdb_magonly_tree/align/gtdbtk.bac120.user_msa.fasta.gz
+gunzip data/MAG_gtdb_magonly_tree/align/gtdbtk.bac120.user_msa.fasta.gz
+FastTree data/MAG_gtdb_magonly_tree/align/gtdbtk.bac120.user_msa.fasta > data/MAG_gtdb_magonly_tree/gtdb_magonly.tree
+
+#for a protein alignment #FastTree input_aln.fasta > input.tre FOR UNROOTED TREE
+chmod +rwx /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output/align/gtdbtk.bac120.user_msa.fasta.gz
+gunzip /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output/align/gtdbtk.bac120.user_msa.fasta.gz
+FastTree /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output/align/gtdbtk.bac120.user_msa.fasta > /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output/tree.tree
+conda deactivate
+
+#this code is for our rooted tree created by de_novo_wf
+chmod +rwx /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/gtdbtk.bac120.user_msa.fasta.gz
+gunzip /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/gtdbtk.bac120.user_msa.fasta.gz
+FastTree /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/gtdbtk.bac120.user_msa.fasta > /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/unrooted.tree
+```
+
+#### Creating phyloseq object
+
+```{r phyloseq object}
+#to create phyloseq object we need 3 things: OTU, Taxonomy, Samples
+#I am using Gus's phyloseq object and adding my own taxonomy to it as GTDBTK was able to update the taxonomy (Thank you Gus!!)
+
+#brining in the relative abundance table. Gus calculated with bwa, bbmap:pileup, and "summarizing_percontig_coverage.R"
+cov_table_sum<-read.csv ("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/phyloseq/transposed_norm_avg_coverage_perbin.csv")
+#use gsub clean up data NEED TO DO THIS PART I LEFT OFF HERE
+cov_table_sum$bin <- gsub("-", "_", cov_table_sum$bin)
+
+#define the row names from OTU column 
+matrix_cov_table_sum<-as.matrix.data.frame(cov_table_sum[3:18])
+rownames(matrix_cov_table_sum)<-cov_table_sum$bin
+
+
+
+#then bring in the sample matrix
+metadata<-read.csv("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/phyloseq/sample_metadata.csv")%>%
+  mutate(sample = paste0("X", sample_ID))%>%
+  select(-sample_ID)
+
+rownames(metadata)<-metadata$sample
+
+#bring in our taxonomy table 
+# need to clean up the data as well
+taxadata <- read.delim("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/gtdbtk.bac120.summary.tsv") %>% 
+  select(user_genome, classification) %>% 
+  separate(classification, sep = ";", into = c("Domain","Phylum","Class","Order","Family","Genus","Species"))%>%
+  mutate(across(!user_genome, function(x)sub(x, pattern = ".__", replacement = "")),
+         user_genome = stringr::str_remove(user_genome, ".contigs"))
+
+#use gsub clean up data 
+taxadata$user_genome <- gsub("-", "_", taxadata$user_genome)
+
+#adding in our mag_full_df file
+mag_full <- mag_full_df 
+#cleaning up our merged file
+mag_full <- mag_full %>% 
+  select(-c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "growth_class")) %>% 
+  inner_join(taxadata, by = c("bin" = "user_genome"))
+
+#Bring in gRodon data
+growthrate<-read.csv("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/phyloseq/bakta_mags_growthrates.csv")%>%
+  select(2:Sample)%>%
+  mutate(Sample = str_remove(Sample, pattern = ".contigs"))
+
+growthrate$Sample <- gsub("-", "_", growthrate$Sample)
+
+taxadata<-taxadata%>%
+  inner_join(growthrate, by = c("user_genome" = "Sample"))
+
+
+taxa_matrix<-as.matrix(taxadata[2:ncol(taxadata)])
+rownames(taxa_matrix)<-taxadata$user_genome
+
+#Bringing in our phylogenetic tree. this is the one that is created from our classify_wf with the --skip_ani_screen flag
+tree<-read.newick("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/classify_gtdbtk_output_skip/align/unrooted.tree")%>%
+  as_tibble()%>%
+  mutate(label = stringr::str_remove(label, ".contigs"))%>%
+  as.phylo()
+
+tree$tip.label <- gsub("-", "_", tree$tip.label)
+
+#Construct our phyloseq sample, otu, and taxa tables
+SAMP<-sample_data(metadata)
+OTU_sum<-otu_table(matrix_cov_table_sum, taxa_are_rows = T)
+TAX<-tax_table(taxa_matrix)
+
+#Put them together into a phyloseq object
+mag_phylo_sa <- phyloseq(OTU_sum, SAMP, TAX, tree)
+
+#Saving to RData file for analysis
+save(mag_phylo_sa, file = ("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/MAG_phyloseq_SA.RData"))
+
+```
+
+#### Using ggtree and other packages to view unrooted phylogenetic tree
+```{r ggtree to view unrooted tree}
+#read in your tree
+unroot <- phy_tree(mag_phylo_sa)
+
+# The circular layout tree
+p <- ggtree(unroot, layout="fan", size=0.4, open.angle=0)
+
+p
+```
+
+#### Adding tip points with ggstar
+```{r tip points with ggstar}
+#add tip points with geom_star of ggstar
+p1 <- p %<+% mag_full_df +
+  geom_star(
+    mapping=aes(fill=Phylum, starshape=fraction_class),
+    starstroke=0.6
+  ) +
+  scale_fill_manual(
+    values=c("#3f50a3", "#C0B956", "#e46009", "#CE8C1D","#965126","#553D32", "#04d2d5", "#80405e", "#b2e902", "#72c998", "#9FB6D9", "#B994E5", "#DF3383"),
+    guide=guide_legend(keywidth = .5, keyheight = .5, 
+                       order = 1, 
+                       override.aes = list(starshape=15)),
+                       na.translate=FALSE 
+  ) +
+  scale_starshape_manual(
+    values=c(15,1,12),
+    guide=guide_legend(keywidth = 0.5, keyheight = 0.5, 
+                      labs(fill="Fraction Class"), order = 2),
+    na.translate=FALSE
+  ) +
+  new_scale_fill() 
+
+#p1 has ggstar that colors by bacterial phylym and has node tip points as fraction_class
+p1
+
+
+
+
+
+
+#notes about the clade info:
+    #cyanobacteria: node 1-19, 348, 349(partial), 350(partial), 351-352, 353(partialbar), 354(partial), 355-365
+    #Armatinomondota: node 21-22, maybe bar in node 367 and 368 need to adjust to see
+    #Firmicutes node:23-27; node bar: 366 but also might be, 369 (thisisthebar) 370-372
+    #Actinobacteriota node:27-63, 376-377(partialbar), 378-382, 383-387(partialbar), 388-391, 392(partial), 393, 394(partial), 395-398, 399-400(partial), 401, 402(partial), 403-409, 410-411(partial), 412, 413 (partial), 414-418, node bar: 374 and 375
+    #Gemmatimonadota node:74-76, 422-423
+    #Bacteroidota node: 77-155, 373, 421,424-501, node bar: 421 and 424 and 425
+      #somany partials between 300-501
+    #Bedellovibrionota and maybe _C: 339-344, 685-689 node bar 685 maybe node bar 684 or even 686
+    #Bdellovibrionota or maybe _C: node bar 688
+    #Verrucomicrobiota node: 156-191, 503-537,  node bar: 503
+      #partial: 506, 509, 510 or 512, 513, 514-516, 525, stop checking track after 525 thres a lot (idk lazy to see)
+    #Planctomyceotota node: 193-252, 538-597, node bar: 538
+    #Proteobacteria node: 255-338, 601-683, node bar: 601
+    #Acideobacteriota node: 253-254, node bar MAYBE: 599
+    #Myxococcota_A node: 345-346, node bar: 690
+    
+    #extra: this wrapsaroundn like 90% of tree for some reason geom_cladelab(node = 373 , label = "wrapsaroundmostoftree")+
+    #extra: node 347 wraps around entire tree
+    #extra: node 419 wraps around like 75%ish of tree
+    #extra: node 420 wraps around like 50% of bottom half of tree 
+    #extra: this includes Verrucomicrogiota until Planctomyceotota geom_cladelab(node = 502 , label = "Verrucomicrobiota+ Planctomycetota")
+    #extra: node 543 covers like 95% of Planctomyceotota but 538 is better geom_cladelab(node = 543 , label = "englishaccent")+
+    #extra" node 598 and 600 covers Proteobacteria+Myxoccocta_A+ Bdellovironota+Bdellovibrionota_C +Acideobacteriota
+    #extra: node 684 seems to cover Bdellovibrionota + Bdellovribrionota_C + Myxococcota_A but i ened to see more
+
+
+```
+
+#### Now using geom_hilight to highlight ALL bacterial phyla 
+```{r geom_hilight}
+#highlighting nodes
+p2 <- p1 +
+  geom_hilight(node = 599, alpha=0.4, fill="#3f50a3", extendto= 1.45, size=0.05) + #acido
+  geom_hilight(node = 374, alpha=0.45, fill="#C0B956", extendto= 1.45, size=0.05) + #actino
+  geom_hilight(node = 367, alpha=0.5, fill="#e46009", extendto= 1.45, size=0.05) + #arma
+  geom_hilight(node = 424, alpha=0.4, fill="#CE8C1D", extendto= 1.45, size=0.05) + #bacterio
+  geom_hilight(node = 685, alpha=0.5, fill="#965126", extendto= 1.45, size=0.3) + #bdello
+  geom_hilight(node = 689, alpha=0.55, fill="#553D32", extendto= 1.45, size=0.3) + #bdello_c
+  geom_hilight(node = 348, alpha=0.25, fill="#04d2d5", extendto= 1.45, size=0.05) + #cyano
+  geom_hilight(node = 369, alpha=0.4, fill="#80405e", extendto= 1.45, size=0.05) + #firmicutes
+  geom_hilight(node = 422, alpha=0.35, fill="#b2e902", extendto= 1.45, size=0.3) + #gemma
+  geom_hilight(node = 690, alpha=0.55, fill="#72c998", extendto= 1.45) + #myxo
+  geom_hilight(node = 538, alpha=0.4, fill="#9FB6D9", extendto= 1.45, size=0.05) + #planctomycetota
+  geom_hilight(node = 601, alpha=0.4, fill="#B994E5", extendto= 1.45, size=0.05) + #proteo
+  geom_hilight(node = 503, alpha=0.4, fill="#DF3383", extendto= 1.45, size=0.5)  #verru
+  
+p2
+```
+
+#### Labeling clades with geom_cladelabel
+```{r}
+#labeling clades
+#I only labeled the bigger phyla, the smaller ones i excluded for aesethetic purposes
+p3 <- p2 +
+  geom_cladelabel(node = 374, label= "Actinobacteriota", align= TRUE, offset.text=.1,barsize=NA, fontsize=5, angle="auto", colour = "#8a863e", hjust="center", horizontal=FALSE) +
+  geom_cladelabel(node = 424, label= "Bacteriodota", align= TRUE, offset.text=.1,barsize=NA, fontsize=5, angle="auto", colour = "#a67117", hjust="center", horizontal=FALSE) + 
+  geom_cladelabel(node = 348, label= "Cyanobacteria", align= TRUE, offset.text=.07,barsize=NA, fontsize=4, angle="auto", colour = "#03bdbf", hjust="center", horizontal=FALSE) +
+  geom_cladelabel(node = 538, label= "Planctomycetota", align= TRUE, offset.text=.07,barsize=NA, fontsize=5, angle="auto", colour = "#8fa3c3", hjust="center", horizontal=FALSE) +
+  geom_cladelabel(node = 601, label= "Proteobacteria", align= TRUE, offset.text=.07,barsize=NA, fontsize=5, angle="auto", colour = "#a685ce", hjust="center", horizontal=FALSE) + 
+  geom_cladelabel(node = 503, label= "Verrucomicrobiota", align= TRUE, offset.text=.07,barsize=NA, fontsize=5, angle="auto", colour = "#DF3383", hjust="center", horizontal=FALSE) 
+
+p3 #this has all the clade highlights and the larger clades are labelled
+```
+
+#heatmap of conjugation genes
+```{r ggtreeExtra conjugation genes heatmap}
+#heatmap, using geom_fruit to link geom_tile
+#joining total_conj_gene_per_bin with mag_full using full_join to match everything tgt
+  #be mindful that the count total_conj
+testing_join <- full_join(count_seq_name, mag_full_df, by = c("Seq_Name" = "bin"))
+#replacing NA in count genes
+testing_join$Count_Genes[is.na(testing_join$Count_Genes)] <- 0
+testing_join$Count_Seq_name[is.na(testing_join$Count_Seq_name)] <- 0
+testing_join$genes_per_bin[is.na(testing_join$genes_per_bin)] <- 0
+
+#first lets clean up our file because we keep getting errors that the columns are the same
+new_total <- select(testing_join, -c(Bin,fraction_class.x,log2FoldChange,padj,fraction_class.y,Domain,Phylum,Class,Order,Family,Genus,Species))
+#convert new_total that is currently a tibble into dataframe
+new_total_df <- as.data.frame(new_total)
+
+#now lets make tree with heatmap ring with ggtreeExtra
+gg_conj <- p2 + 
+  geom_fruit(
+    data=new_total_df,
+    geom=geom_tile,
+    mapping=aes(y=Seq_Name, x=conj_gene_type, alpha=genes_per_bin, fill=conj_gene_type),
+    color = "#525252",
+    size = 0.35,
+    offset = 0.05,
+    pwidth=0.4
+  ) +
+  scale_alpha_continuous(
+    range=c(0,1), #range must lie between 0 and 1
+    guide=guide_legend(keywidth = 0.3, keyheight = 0.3, order= 5)
+  ) +
+  scale_fill_manual(
+    values = c("#313167", "#aa5c3a", "olivedrab1", "#eba2b7"),
+    guide=guide_legend(keywidth = 0.5, keyheight = 0.3, order = 4),
+    na.translate= FALSE
+  ) 
+gg_conj #this is trying to look at a heatmap of the conjugation genes without the clade labels 
+```
+
+#### geom_col to look at plasmid genes per bin 
+```{r geom_col plasmid genes per bin ggtreeExtra}
+#we want to merge these numbers together and count them so that we can plot them as a heatmap and bar graph!
+count_plasmid_total_peg <- merge_plasmidsum_magfull %>% 
+  group_by(Seq_Name) %>% 
+    summarize(n_genes = sum(n_genes), .groups="drop")  
+
+#bar graph of plasmid encoded genes. we will be using the dataframe count_peg_seq to see the number of plasmid encoded genes per bin that has the calculations for #plasmid genes per MAG
+test_merge_plasmid <- full_join(count_peg_seq, count_plasmidgenes_magfull, by=c("Seq_Name"="bin"))
+#now turning the NAs into zeros
+test_merge_plasmid$genes_per_bin[is.na(test_merge_plasmid$genes_per_bin)] <- 0
+#cleaning up our merged file
+test_merge_plasmid1 <- test_merge_plasmid %>% 
+  select(-c("Domain", "Phylum.x", "Phylum.y", "Class", "Order", "Family", "Genus", "Species", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "growth_class", "fraction_class.x", "Bin", "log2FoldChange","padj")) 
+                             
+p5 <- p2 +
+  geom_fruit(
+    data=test_merge_plasmid1,
+    geom=geom_col,
+    mapping=aes(x=genes_per_bin, y=Seq_Name, fill=fraction_class.y),
+    orientation="y",
+    pwidth=.38,
+    position=position_stackx(),
+  ) +
+  scale_fill_manual(
+    values = c("#965953", "black", "#53977a")
+  ) +
+  geom_treescale(fontsize=2.9, linesize = .2, x=2)
+ 
+p5 #this is showing us the number of plasmid encoded genes that are divided by MAG
+
+```
+
+#### Phage Encoded Genes geom_col
+```{r phage encoded genes heatmap}
+#count all the genes in the bin 
+phab_genes <- merge_virussum_magfull
+total_phab_genes_bin <- phab_genes %>%
+  group_by(Seq_Name, Bin, n_genes, fraction_class) %>% 
+  summarise(
+    Count_Genes = n(),
+    .groups = "drop",
+    total_n_genes = sum(n_genes))
+
+
+#now count the number of seq_names 
+count_phab_seq <- total_phab_genes_bin %>% 
+  group_by(Seq_Name) %>% 
+  mutate(Count_Seq_name = n()) 
+
+count_phab_seq
+#now we are going to divide by the # gene type by the bin
+count_phab_seq$genes_per_bin <- count_phab_seq$total_n_genes / count_phab_seq$Count_Seq_name
+
+#now lets combine dataframes 
+counting_phage_genes <- mag_full_df
+#bar graph of phage encoded genes. we will be using the dataframe count_phab_seq to see the number of plasmid encoded genes per bin that has the calculations for # phage genes per MAG
+test_merge_phage <- full_join(count_phab_seq, counting_phage_genes, by=c("Seq_Name"="bin"))
+#now turning the NAs into zeros
+test_merge_phage$genes_per_bin[is.na(test_merge_phage$genes_per_bin)] <- 0
+#cleaning up our merged file
+test_merge_phage1 <- test_merge_phage %>% 
+  select(-c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "growth_class", "fraction_class.x", "Bin", "log2FoldChange","padj")) 
+
+#now lets make the ring                         
+p6 <- p2 +
+  geom_fruit(
+    data=test_merge_phage1,
+    geom=geom_col,
+    mapping=aes(x=genes_per_bin, y=Seq_Name, fill=fraction_class.y),
+    orientation="y",
+    pwidth=.38,
+    position=position_stackx()
+  ) +
+  scale_fill_manual(
+    values = c("#965953", "black", "#53977a")
+  ) +
+  geom_treescale(fontsize=2.9, linesize = .2, x=2)
+ 
+p6 #this is showing us the number of plasmid encoded genes that are divided by MAG
+```
+
+
