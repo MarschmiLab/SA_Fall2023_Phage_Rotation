@@ -1,1 +1,7 @@
 This folder is meant to keep track of my daily progress and notes like a lab notebook
+
+In my September and October 2023 directories these were meant for me to keep track of my results and what I needed to do but I kinda abandoned this and used my Rmarkdown files as my notebooks.
+
+346_MAG_analysis.Rmd = lab notebook for MAG analysis
+
+individual_assembly.Rmb = lab notebook for community individual contig analysis
