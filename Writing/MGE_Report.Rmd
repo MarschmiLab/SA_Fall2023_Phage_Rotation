@@ -1,0 +1,52 @@
+---
+title: "MGE_Report"
+format:
+  pdf:
+author: "sophiaaredas"
+date: "2023-11-06"
+editor: visual
+indent: true
+bibliography: biblio.bib
+output: html_document
+---
+
+# Mobile Genetic Elements
+
+## Introduction
+
+Bacteria and archaea are vital components to the biogeochemical cycling of carbon and nutrients, especially in aquatic ecosystems. Heterotrophic microbes directly consume particulate organic matter and is broken down into bioavailable organic and inorganic nutrients that are released for other microbes to consume [@grossartEcologicalConsequencesBacterioplankton2010]. 
+
+Pelagic bacteria can be classified into fractions as truly free-living (FL), truly particle-associated (PA), and bacteria that alternate between the two lifestyles (generalists) [@grossartEcologicalConsequencesBacterioplankton2010]. FL microbes tend to have small genomes, do not have chemotaxis ability, and have adapted to live in a low concentration of nutrients [@bachmannEnvironmentalDriversFreeLiving2018]. On the other hand, PA microbes have larger genomes, are capable of chemotaxis to colonize particles, and live in higher nutrient conditions [@bachmannEnvironmentalDriversFreeLiving2018]. 
+
+Horizontal gene transfer (HGT) between microbes are mediated by mobile genetic elements (MGEs) such as plasmids and bacteriophages [@haudiquetSelfishPromiscuousSometimes2022]. Plasmids are small circular DNA fragments that are separate from chromosomal DNA, replicate independently, and are transferred horizontally by conjugation [@sanmillanEvolutionPlasmidMediatedAntibiotic2018]. Plasmids are of growing concern as they are capable of disseminating antibiotic resistance genes and have the potential to create mutlidrug resistant "superbugs" [@sanmillanEvolutionPlasmidMediatedAntibiotic2018]. 
+
+Bacteriophages (phages) are the most abundant biological entity in the aquatic environment. Phages play a curcial role in shaping microbial populations and it is estimates that 20-40% of cells are lysed and influence biogeochemical cycling [@brownEcologicalFunctionalRoles2022]. 
+
+Yet in freshwater aquatic environments, the ability to annotate MGEs such as plasmids and phages from short read sequcing data has been limited. Understanding MGEs from sequencing data is critical to understand plasmid and phage diversity. 
+
+## Methods
+
+### Sample Collection
+
+Samples were collected during July and September in 2014 and 2015 in Muskegon Lake, Michigan at a depth of 1 meter from four sampling stations [@schmidtMicrohabitatsAreAssociated2020]. Samples were collected with vertical Van Dorn samplers Microbial cells for DNA extraction were collected by sequential in-line filtration onto a 3 μm isopore polycarbonate filter for the particle-associated fraction and a 0.22 μm polyethersulfone membrane filter for the free-living fraction [@schmidtMicrohabitatsAreAssociated2020]. DNA extractions were performed by using an optimized method based on the AllPrep DNA/RNA/miRNA Universal kit [@schmidtMicrohabitatsAreAssociated2020] [@mccarthyRNAPreservationAgents2015]. DNA was sequenced using Illumina HiSeq 2500.
+
+### Assembly and binning
+Squences from each sampled were individually assembled and co-assembled within free-living and particle-associated samples into contigs with MEGAHIT v1.0.6 [@iMEGAHITV1Fast2016]. 
+
+Bacterial isolates were then binned to create a total of 346 metagenome-assembled genomes, known as MAGs.
+
+### geNomad
+
+explain what is geNomad
+
+### Phylogenetic Classification
+The taxonomic classification of MAGs was classified by GTDB-tk v2.3.1 [@chaumeilGTDBTkV2Memory2022]. An unrooted phylogenetic tree of 346 MAGs was created using the GTDB-tk classify_wf to produce a multiple sequence alignment of the BAC120 market set.
+
+The tree was constructed with FastTree using the JTT+CAT model [@priceFastTreeComputingLarge2009]
+
+## Results
+
+
+## Supplementary Information
+
+## Works Cited
