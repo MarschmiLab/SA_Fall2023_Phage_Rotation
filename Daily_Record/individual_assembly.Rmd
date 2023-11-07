@@ -177,7 +177,6 @@ df_indiv_plasmid_sum <- data.frame(indiv_plasmid_summary)
 df_indiv_plasmid_sum <- df_indiv_plasmid_sum %>% separate(seq_name, c('Final', 'Seq_Name', 'Name', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length'))
 
 #now we are going to mutate the combine the columns together
-df_indiv_plasmid_sum$Seq_Name <- paste(df_indiv_plasmid_sum$Final, df_indiv_plasmid_sum$Seq_Name, df_indiv_plasmid_sum$Name, sep = "_")
 df_indiv_plasmid_sum$fa_info <- paste(df_indiv_plasmid_sum$fa_info, df_indiv_plasmid_sum$plasmid, df_indiv_plasmid_sum$genes, df_indiv_plasmid_sum$tsv, sep = "_")
 df_indiv_plasmid_sum$Contig <- paste(df_indiv_plasmid_sum$Contig, df_indiv_plasmid_sum$bp_length, sep = "_")
 
@@ -217,15 +216,14 @@ df_indiv_virus_genes <- subset(df_indiv_virus_genes, select = -c(DASTool, Bin, v
 df_indiv_virus_sum <- data.frame(indiv_virus_summary)
 
 #split the first column called gene into multiple columns
-df_indiv_virus_sum <- df_indiv_virus_sum %>% separate(seq_name, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length'))
+df_indiv_virus_sum <- df_indiv_virus_sum %>% separate(seq_name, c('Seq_Name', 'Sample_ID', 'Bin', 'fa_info', 'virus', 'genes', 'tsv', 'Contig', 'bp_length'))
 
 #now we are going to mutate the combine the columns together
-df_indiv_virus_sum$Seq_Name <- paste(df_indiv_virus_sum$Seq_Name, df_indiv_virus_sum$DASTool, df_indiv_virus_sum$Bin, sep = "_")
 df_indiv_virus_sum$fa_info <- paste(df_indiv_virus_sum$fa_info, df_indiv_virus_sum$virus, df_indiv_virus_sum$genes, df_indiv_virus_sum$tsv, sep = "_")
 df_indiv_virus_sum$Contig <- paste(df_indiv_virus_sum$Contig, df_indiv_virus_sum$bp_length, sep = "_")
 
 #then we need to get rid of the extra columns that we do not need
-df_indiv_virus_sum <- subset(df_indiv_virus_sum, select = -c(DASTool, virus, genes, tsv, bp_length)) 
+df_indiv_virus_sum <- subset(df_indiv_virus_sum, select = -c(Seq_Name, Bin, virus, genes, tsv, bp_length)) 
 
 #view to make sure it looks good
 ```
@@ -276,13 +274,59 @@ mbp <- ggplot(assembly_meta, aes(x = filter_size, y = length_mb, fill = fraction
 
 mbp
 
-#do 
-#ok based on the looks of it I do not think that I plotted this correctly the sizes look roughly equal???
-
 ```
 
 ```{r normalizing plasmid and phage gene amounts that are found on each contig to a normalized bin abundance}
 #individual asssembly normalizing
-group by sample id (with indiv_plasmid genes), ocunt n_genes and divide by assembly size to get number of genes per Mb and then plot
+
+#before we normalize anything lets join our plasmid and virus sum dfs together with assembly meta
+
+#first lets do plasmid
+
+#need to make sure that assembly_meta is character
+assembly_meta$sample_ID <- as.character(assembly_meta$sample_ID)
+
+#now lets merge
+df_meta_assembly_plasmid_sum <- left_join(df_indiv_plasmid_sum, assembly_meta, by = c("Seq_Name" = "sample_ID"))
+
+#now lets group by sample_ID
+df_meta_assembly_plasmid_sum <- df_meta_assembly_plasmid_sum %>% 
+  group_by(Seq_Name, length_mb, fraction) %>%
+  summarise(count_n_genes = sum(n_genes))
+
+#now we will divide the number of genes per Mb to get the abundance per assembly
+df_meta_assembly_plasmid_sum$genes_per_Mb <- df_meta_assembly_plasmid_sum$length_mb / df_meta_assembly_plasmid_sum$count_n_genes 
+
+#now lets visualize the abundance of plasmid encoded genes per contig 
+assembly_plasmid_genes <- ggplot(df_meta_assembly_plasmid_sum, aes(x = fraction, y = genes_per_Mb, fill = fraction)) +
+  geom_boxplot() +
+  geom_point() +
+   geom_pwc(
+    method = "wilcox_test", label = "p.adj.format",
+    p.adjust.method = "fdr")
+assembly_plasmid_genes
+#p value is 0.51 for plasmid genes not significant but thats ok
+
+#now lets do the same for virus sum to look at number of phage encoded genes
+df_meta_assembly_virus_sum <- left_join(df_indiv_virus_sum, assembly_meta, by = c("Sample_ID" = "sample_ID"))
+
+#now lets group by sample_ID
+df_meta_assembly_virus_sum <- df_meta_assembly_virus_sum %>% 
+  group_by(Sample_ID, length_mb, fraction) %>%
+  summarise(count_n_genes = sum(n_genes))
+
+#now we will divide the number of genes per Mb to get the abundance per assembly
+df_meta_assembly_virus_sum$genes_per_Mb <- df_meta_assembly_virus_sum$count_n_genes / df_meta_assembly_virus_sum$length_mb 
+
+#now lets visualize the abundance of plasmid encoded genes per contig 
+assembly_phage_genes <- ggplot(df_meta_assembly_virus_sum, aes(x = fraction, y = genes_per_Mb, fill = fraction)) +
+  geom_boxplot() +
+  geom_point() +
+   geom_pwc(
+    method = "wilcox_test", label = "p.adj.format",
+    p.adjust.method = "fdr")
+assembly_phage_genes
+#p value is 0.51 for plasmid genes not significant but thats ok
+#group by sample id (with indiv_plasmid genes), ocunt n_genes and divide by assembly size to get number of genes per Mb and then plot
 ```
 
