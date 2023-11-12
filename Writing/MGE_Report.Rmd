@@ -10,42 +10,89 @@ bibliography: biblio.bib
 output: html_document
 ---
 
-# Mobile Genetic Elements
+# Mobile Genetic Elements in Muskegon Lake, Michigan
 
 ## Introduction
 
-Bacteria and archaea are vital components to the biogeochemical cycling of carbon and nutrients, especially in aquatic ecosystems. Heterotrophic microbes directly consume particulate organic matter and is broken down into bioavailable organic and inorganic nutrients that are released for other microbes to consume [@grossartEcologicalConsequencesBacterioplankton2010]. 
+Bacteria and archaea are vital components to the biogeochemical cycling of carbon and nutrients, especially in aquatic ecosystems. Heterotrophic microbes directly consume particulate organic matter and is broken down into bioavailable organic and inorganic nutrients that are released for other microbes to consume [@grossartEcologicalConsequencesBacterioplankton2010].
 
-Pelagic bacteria can be classified into fractions as truly free-living (FL), truly particle-associated (PA), and bacteria that alternate between the two lifestyles (generalists) [@grossartEcologicalConsequencesBacterioplankton2010]. FL microbes tend to have small genomes, do not have chemotaxis ability, and have adapted to live in a low concentration of nutrients [@bachmannEnvironmentalDriversFreeLiving2018]. On the other hand, PA microbes have larger genomes, are capable of chemotaxis to colonize particles, and live in higher nutrient conditions [@bachmannEnvironmentalDriversFreeLiving2018]. 
+Pelagic bacteria can be classified into fractions as truly free-living (FL), truly particle-associated (PA), and bacteria that alternate between the two lifestyles (generalists) [@grossartEcologicalConsequencesBacterioplankton2010]. FL microbes tend to have small genomes, do not have chemotaxis ability, and have adapted to live in a low concentration of nutrients [@bachmannEnvironmentalDriversFreeLiving2018]. On the other hand, PA microbes have larger genomes, are capable of chemotaxis to colonize particles, and live in higher nutrient conditions [@bachmannEnvironmentalDriversFreeLiving2018].
 
-Horizontal gene transfer (HGT) between microbes are mediated by mobile genetic elements (MGEs) such as plasmids and bacteriophages [@haudiquetSelfishPromiscuousSometimes2022]. Plasmids are small circular DNA fragments that are separate from chromosomal DNA, replicate independently, and are transferred horizontally by conjugation [@sanmillanEvolutionPlasmidMediatedAntibiotic2018]. Plasmids are of growing concern as they are capable of disseminating antibiotic resistance genes and have the potential to create mutlidrug resistant "superbugs" [@sanmillanEvolutionPlasmidMediatedAntibiotic2018]. 
+Horizontal gene transfer (HGT) between microbes are mediated by mobile genetic elements (MGEs) such as plasmids and bacteriophages [@haudiquetSelfishPromiscuousSometimes2022]. Plasmids are small circular DNA fragments that are separate from chromosomal DNA, replicate independently, and are transferred horizontally by conjugation [@sanmillanEvolutionPlasmidMediatedAntibiotic2018]. Plasmids are of growing concern as they are capable of disseminating antibiotic resistance genes and have the potential to create multi-drug resistant "super bugs" [@sanmillanEvolutionPlasmidMediatedAntibiotic2018]. Plasmids can be classified as self-transmissible or mobilizable. Self-transmissible plasmids carry their own conjugation machinery to mobilize themselves into recipient cells. Mobilizable plasmids do not encode their own machinery to mobilize themselves but instead hitch a ride with the self-transmibble plasmids to be disseminated into recipient cells [@alderliestenEffectDonorrecipientRelatedness2020] [@smillieMobilityPlasmids2010]. Self-transmissible plasmids that are capable of conjugation are only conjugative for \~0.1% of their life cycle as conjugative is an energetically taxing process [@smillieMobilityPlasmids2010].
 
-Bacteriophages (phages) are the most abundant biological entity in the aquatic environment. Phages play a curcial role in shaping microbial populations and it is estimates that 20-40% of cells are lysed and influence biogeochemical cycling [@brownEcologicalFunctionalRoles2022]. 
+Bacteriophages (phages) are the most abundant biological entity in the aquatic environment. Phages play a crucial role in shaping microbial populations and it is estimated that 20-40% of cells are lysed and influence biogeochemical cycling [@brownEcologicalFunctionalRoles2022].
 
-Yet in freshwater aquatic environments, the ability to annotate MGEs such as plasmids and phages from short read sequcing data has been limited. Understanding MGEs from sequencing data is critical to understand plasmid and phage diversity. 
+Yet in freshwater aquatic environments, the ability to annotate MGEs such as plasmids and phages from short read sequencing data has been limited. Understanding MGEs from sequencing data is critical to understand plasmid and phage diversity.
+
+In this study we have two main forms of analyses: the metagenome assembled genome (MAG) level and we sought to analyze 346 metagenome assembled genomes (MAGs) using metagenomic data from sixteen samples.
+
+In this study we sought to analyze 346 to taxonomically identify members of the community while also analyzing the whole community with our assembled contigs. By using both MAGs and assembled contigs, we will be able to understand microbial communities found in Muskegon Lake, Michigan.
 
 ## Methods
 
 ### Sample Collection
 
-Samples were collected during July and September in 2014 and 2015 in Muskegon Lake, Michigan at a depth of 1 meter from four sampling stations [@schmidtMicrohabitatsAreAssociated2020]. Samples were collected with vertical Van Dorn samplers Microbial cells for DNA extraction were collected by sequential in-line filtration onto a 3 μm isopore polycarbonate filter for the particle-associated fraction and a 0.22 μm polyethersulfone membrane filter for the free-living fraction [@schmidtMicrohabitatsAreAssociated2020]. DNA extractions were performed by using an optimized method based on the AllPrep DNA/RNA/miRNA Universal kit [@schmidtMicrohabitatsAreAssociated2020] [@mccarthyRNAPreservationAgents2015]. DNA was sequenced using Illumina HiSeq 2500.
+Samples were collected during July and September in 2014 and 2015 in Muskegon Lake, Michigan at a depth of 2 meters from two sampling stations (Outlet and Deep) [@schmidtMicrohabitatsAreAssociated2020]. The two sampling stations were selected for their similarity in microbial communities. Samples were collected with vertical Van Dorn samplers Microbial cells for DNA extraction were collected by sequential in-line filtration onto a 3 μm isopore polycarbonate filter for the particle-associated fraction and a 0.22 μm polyethersulfone membrane filter for the free-living fraction [@schmidtMicrohabitatsAreAssociated2020]. DNA extractions were performed by using an optimized method based on the AllPrep DNA/RNA/miRNA Universal kit [@schmidtMicrohabitatsAreAssociated2020] [@mccarthyRNAPreservationAgents2015]. DNA was sequenced using Illumina HiSeq 2500.
 
 ### Assembly and binning
-Squences from each sampled were individually assembled and co-assembled within free-living and particle-associated samples into contigs with MEGAHIT v1.0.6 [@iMEGAHITV1Fast2016]. 
+
+Sequences from each sampled were individually assembled and co-assembled within free-living and particle-associated samples into contigs with MEGAHIT v1.0.6 [@iMEGAHITV1Fast2016].
 
 Bacterial isolates were then binned to create a total of 346 metagenome-assembled genomes, known as MAGs.
 
 ### geNomad
 
-explain what is geNomad
+To identify and classify mobile genetic elements (MGEs) such as plasmids and phages, geNomad is a bioinformatic tool for metagenomic data sets. GeNomad employs a hybrid approach by using alignment-free models to classify reads from the nucleotide sequences while gene-based classification methods search online databases such as Prodigal and MMseqs2 and alignments to identify marker proteins to identify the sequence [@camargoIdentificationMobileGenetic2023]. From utilizing these two methods, geNomad produces an output created by the sequence and marker branches to generate an aggregated classification to bolster the strength of each classification method [@camargoIdentificationMobileGenetic2023]. Additionally, geNomad's classification models utilize a calibrated score of the probability of the prediction which allows users to compute false discovery rates to make informed decisions and to adjust the assigned labels of some sequences to accurately identify plasmid and viruses [@camargoIdentificationMobileGenetic2023]. For sequences that are classified as viral by geNomad's markers, they are then assigned to taxa defined by the International Committee on Taxonomy of viruses by created the taxonomies of all genes to create a single consensus lineage for that sequence [@walkerRecentChangesVirus2022] [@camargoIdentificationMobileGenetic2023].
 
 ### Phylogenetic Classification
+
 The taxonomic classification of MAGs was classified by GTDB-tk v2.3.1 [@chaumeilGTDBTkV2Memory2022]. An unrooted phylogenetic tree of 346 MAGs was created using the GTDB-tk classify_wf to produce a multiple sequence alignment of the BAC120 market set.
 
 The tree was constructed with FastTree using the JTT+CAT model [@priceFastTreeComputingLarge2009]
 
+## Hypothesis
+
+When considering aquatic bacterial fractions or lifestyles, truly particle-associated are in direct contact with each other on particles allowing for more opportunities to engage in HGT. Thus we hypothesize this direct cell-to-cell contact allows for more opportunities to engage in conjugation and be hunted by phages.
+
 ## Results
 
+### Assembly Level View
+
+##### Plasmids
+
+The assembly level view is based on the contigs from the 0.22 μm (free-living fraction) and 3.0 μm (particle-associated fraction) filter papers. At this level, this is the whole community view where we do not know taxonomically "who" is in our samples as this was done prior to binning. When first considering the relative abundance of plasmid encoded genes between our two filters, we hypothesized that the particle-attached filter would have a higher abundance than the free-living filter due to the increased cell-to-cell contact (Fig. 1). Yet we find that there is no significant difference between the number of plasmid-encoded genes between our two filter fractions per Mb.
+
+![**Fig. 1.** Assembly level view of relative abundance of number of plasmid-encoded genes per Mb](images/normalizing%20plasmid%20and%20phage%20gene%20amounts%20that%20are%20found%20on%20each%20contig%20to%20a%20normalized%20bin%20abundance-1.png)
+
+To understand how these plasmids may be disseminated throughout the environment, it is important to see what kinds of conjugation machinery as present on plasmids. Albeit conjugation is a transient process of a microbe's lifecycle, the types of genes encoded can give us an insight how microbes are being disseminated.
+
+![](images/unnamed-chunk-2-2.png)
+
+**Fig. 2.** Conjugation genes between filter sizes
+
+When comparing the relative abundances of conjugation genes between both filter sizes, it is interesting to note that both sizes reflect roughly equal amount of conjugation genes. *MOB* genes refer to the conjugation machinery found on mobilizable plasmids that hitchhike a ride with self-transmissible plasmids that encode *tra, trb,* and *vir* genes in type IV secretion systems [@smillieMobilityPlasmids2010].
+
+##### Phages
+
+Next, we hypothesized the relative abundance of phage-encoded genes on the particle-attached filter would have a higher abundance than the free-living filter due to the increased cell-to-cell contact. Yet we find the opposite, that there is a higher relative abundance of phage-encoded genes on the 0.22 μm (free-living filter) (fig.3).
+
+![](images/normalizing%20plasmid%20and%20phage%20gene%20amounts%20that%20are%20found%20on%20each%20contig%20to%20a%20normalized%20bin%20abundance-2.png)
+
+**Fig. 3.** Phage-encoded genes per Mb
+
+#### 346 MAGs 
+To taxonomically identify what microbes are present within our data set, MAGs were identified through statistical modeling in these two filter sizes and by
+calculating differencial abundances. A total of 346 MAGs were created with
+statistically significant bins categorized as free-living or particle-associated lifestyles. Those not statistically significant were considered to be generalists (from Gus's repo not sure how to cite).
+
+To understand the distribution of our data set, we find that the majority of our
+MAGs belong to generalist lifestyles (66.8%) (Fig. 4)
+
+![](images/percentage%20bar%20graph%20version-1.png)
+
+**Fig. 4.** Percentage of MAGs
+
+#### How does bacterial lifestyle impact the number of plasmid-encoded genes?
 
 ## Supplementary Information
 
