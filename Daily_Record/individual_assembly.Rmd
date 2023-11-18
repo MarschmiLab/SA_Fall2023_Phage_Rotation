@@ -1,7 +1,6 @@
 ---
 title: "individual_assembly"
 author: "sophiaaredas"
-date: "2023-10-30"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
@@ -41,7 +40,7 @@ knitr::opts_chunk$set(eval = TRUE,
                       dpi=200, dev = "png",
                       engine = "R", # Chunks will always have R code, unless noted
                       error = TRUE,
-                      fig.path="/local/workdir/sna49/SA_Fall2023_Phage_Rotation/figures/",
+                      fig.path="figures/",
                       fig.align = "center")
 ```
 
@@ -60,7 +59,7 @@ pacman::p_load(readr, stringr, tidyr, tidyverse, dplyr, ggplot2, tidytext, scale
 ### So geNomad has finished its analysis and now we have to organize our outputs
 
 #### We will be using the geNomad_filter_outputs.sh code
-```{bash script for summary directories}
+```{bash script for summary directories, eval = FALSE}
 #this shell script will take geNomad output files from genomad_output_final_indiv_assemblies (my genomad output directory holding all files) into their respective summary files
 #in summary it will take separate summary files and combine them inot a big summary output file
 
@@ -153,16 +152,14 @@ df_indiv_plasmid_genes <- data.frame(indiv_plasmid_genes)
 
 #split the first column called gene into multiple columns
 #because there is so much going on with the column name we are going to separate each word into its own column and then mutate it together (dont be alarmed)
-df_indiv_plasmid_genes <- df_indiv_plasmid_genes %>% separate(gene, c('Final', 'Seq_Name', 'Name', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
+df_indiv_plasmid_genes <- df_indiv_plasmid_genes %>% separate(gene, c('Final', 'Seq_Name', 'Name','fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
 
 #now we are going to mutate the combine the columns together
-df_indiv_plasmid_genes$Final <- paste(df_indiv_plasmid_genes$Final, df_indiv_plasmid_genes$Seq_Name, df_indiv_plasmid_genes$Name, sep = "_")
-df_indiv_plasmid_genes$fa_info <- paste(df_indiv_plasmid_genes$fa_info, df_indiv_plasmid_genes$plasmid, df_indiv_plasmid_genes$genes, df_indiv_plasmid_genes$tsv, sep = "_")
-df_indiv_plasmid_genes$Contig <- paste(df_indiv_plasmid_genes$Contig, df_indiv_plasmid_genes$bp_length, sep = "_")
+
 
 
 #then we need to get rid of the extra columns that we do not need
-df_indiv_plasmid_genes <- subset(df_indiv_plasmid_genes, select = -c(Seq_Name, Name, plasmid, genes, tsv)) 
+df_indiv_plasmid_genes <- subset(df_indiv_plasmid_genes, select = -c(Final,Name, fa_info, plasmid, genes, tsv, Contig, Contig_Number)) 
 #view to make sure it looks good
 ```
 
@@ -291,28 +288,37 @@ df_meta_assembly_plasmid_sum <- left_join(df_indiv_plasmid_sum, assembly_meta, b
 
 #now lets group by sample_ID
 df_meta_assembly_plasmid_sum <- df_meta_assembly_plasmid_sum %>% 
-  group_by(Seq_Name, length_mb, fraction) %>%
+  group_by(Seq_Name, length_mb, fraction, filter_size) %>%
   summarise(count_n_genes = sum(n_genes))
 
 #now we will divide the number of genes per Mb to get the abundance per assembly
-df_meta_assembly_plasmid_sum$genes_per_Mb <- df_meta_assembly_plasmid_sum$length_mb / df_meta_assembly_plasmid_sum$count_n_genes 
+df_meta_assembly_plasmid_sum$genes_per_Mb <- df_meta_assembly_plasmid_sum$count_n_genes / df_meta_assembly_plasmid_sum$length_mb 
 
 #now lets visualize the abundance of plasmid encoded genes per contig 
-assembly_plasmid_genes <- ggplot(df_meta_assembly_plasmid_sum, aes(x = fraction, y = genes_per_Mb, fill = fraction)) +
+assembly_plasmid_genes <- ggplot(df_meta_assembly_plasmid_sum, aes(x = filter_size, y = genes_per_Mb, fill = fraction)) +
   geom_boxplot() +
   geom_point() +
    geom_pwc(
     method = "wilcox_test", label = "p.adj.format",
-    p.adjust.method = "fdr")
+    p.adjust.method = "fdr") +
+  xlab("Filter Size") +
+  ylab("Plasmid Encoded Genes / Mb") +
+  theme_classic()
 assembly_plasmid_genes
 #p value is 0.51 for plasmid genes not significant but thats ok
 
+
+#need to make sure that assembly_meta is character
+assembly_meta$sample_ID <- as.character(assembly_meta$sample_ID)
+
+#now lets merge
+df_meta_assembly_virus_sum <- left_join(df_indiv_plasmid_sum, assembly_meta, by = c("Seq_Name" = "sample_ID"))
 #now lets do the same for virus sum to look at number of phage encoded genes
 df_meta_assembly_virus_sum <- left_join(df_indiv_virus_sum, assembly_meta, by = c("Sample_ID" = "sample_ID"))
 
 #now lets group by sample_ID
 df_meta_assembly_virus_sum <- df_meta_assembly_virus_sum %>% 
-  group_by(Sample_ID, length_mb, fraction) %>%
+  group_by(Sample_ID, length_mb, fraction, filter_size) %>%
   summarise(count_n_genes = sum(n_genes))
 
 #now we will divide the number of genes per Mb to get the abundance per assembly
@@ -324,9 +330,70 @@ assembly_phage_genes <- ggplot(df_meta_assembly_virus_sum, aes(x = fraction, y =
   geom_point() +
    geom_pwc(
     method = "wilcox_test", label = "p.adj.format",
-    p.adjust.method = "fdr")
+    p.adjust.method = "fdr") +
+  xlab("Lifestyle") +
+  ylab("# Phage-Encoded Genes / Mb")+
+theme_classic()
 assembly_phage_genes
 #p value is 0.51 for plasmid genes not significant but thats ok
 #group by sample id (with indiv_plasmid genes), ocunt n_genes and divide by assembly size to get number of genes per Mb and then plot
+```
+
+#### Conjugation Genes
+```{r}
+assembly_meta$sample_ID <- as.character(assembly_meta$sample_ID)
+
+#now lets merge
+df_meta_assembly_plasmid_genes <- left_join(df_indiv_plasmid_genes, assembly_meta, by = c("Seq_Name" = "sample_ID"))
+
+
+
+#now we will make all conjugation type genes as an umbrella
+community_conjugation <- df_meta_assembly_plasmid_genes %>% 
+  filter(!is.na(annotation_conjscan)) %>%  
+  mutate(conj_gene_type = case_when(grepl("trb", annotation_conjscan) ~ "trb genes",
+                                    grepl("vir", annotation_conjscan) ~ "vir genes",
+                                    grepl("MOB", annotation_conjscan) ~ "MOB genes",
+                                    grepl("tra", annotation_conjscan) ~ "tra genes",
+                                    grepl("t4cp1", annotation_conjscan) ~ "tra genes",
+                                    grepl("alr", annotation_conjscan) ~ "trb genes")) %>% 
+  select(Seq_Name, annotation_conjscan, conj_gene_type, filter_size, fraction, length_mb)
+
+#now lets group by conjugation gene type
+community_conjugation_type <- community_conjugation %>% 
+  group_by(Seq_Name, length_mb, fraction, filter_size, conj_gene_type) %>%
+  summarise(count_conjugation_genes = n())
+conjugation_com <- df_indiv_plasmid_genes
+
+community_conjugation_type$abundance <- community_conjugation_type$count_conjugation_genes / community_conjugation_type$length_mb
+
+all_conj_genes <- community_conjugation %>% 
+  group_by(Seq_Name, filter_size, length_mb) %>%
+  summarise(count_allconjugation_genes = n())
+
+all_conj_genes$abundance <- all_conj_genes$count_allconjugation_genes / all_conj_genes$length_mb
+
+#plot all conjugation genes
+all_conjugation <- ggplot(all_conj_genes, aes(x = filter_size, y = abundance, fill = filter_size)) +
+  geom_boxplot() +
+  geom_point() +
+   geom_pwc(
+    method = "wilcox_test", label = "p.adj.format",
+    p.adjust.method = "fdr") +
+  xlab("Filter Size") +
+  ylab("Conjugation Genes / Mb") +
+  theme_classic()
+all_conjugation
+
+#now lets look at specific conjugation genes
+#plot all conjugation genes
+conjugation_type <- ggplot(community_conjugation_type, aes(x = filter_size, y = abundance, fill = conj_gene_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE)+
+  xlab("Filter Size") +
+  ylab("Conjugation Genes / Mb") +
+  theme_classic()
+conjugation_type
+  
 ```
 
