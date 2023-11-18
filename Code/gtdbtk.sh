@@ -47,9 +47,6 @@ conda env config vars set GTDBTK_DATA_PATH="/home/sna49/miniconda3/envs/gtdbtk-2
 #checking which version just in case
 gtdbtk check_install
 
-#gtdbtk does not like .fa.gz files just .fa so lets copy over the files 
-cp -r /local/workdir/lab_data/2014-2015-metaG-muskegon/binning/dereplicated_bins /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk
-
 #created new directory called gtdbtk 
 /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/346_MAGs
   #I recopied the original 346 MAGs but jsut the .fa version
@@ -106,7 +103,7 @@ cd /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/346_MAGs/Output/gtdbtk_f
 
 
 #now lets try classify_wf but with the --skip_ani_screen flag. This was recommended by the developers to get all 346 genomes characterized. The documentation does not reflect thtat BUT I am really happy it might work
-gtdbtk classify_wf --genome_dir /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/dereplicated_bins/346_MAGs --out_dir classify_gtdbtk_output_skip --skip_ani_screen -x .fa --cpus 5
+gtdbtk classify_wf --genome_dir /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/346_MAGs --out_dir classify_gtdbtk_output_skip --skip_ani_screen -x .fa --cpus 5
 
 #but we can also try the de novo wf to give us a rooted tree and we would use planctomycetes as our outgroup
 gtdbtk de_novo_wf --genome_dir /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/gtdbtk/346_MAGs --outgroup_taxon p__Chloroflexota --bacteria  --out_dir de_novo_wf_test1 -x .fa --cpus 100
