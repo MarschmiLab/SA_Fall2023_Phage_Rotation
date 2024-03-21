@@ -1,0 +1,10 @@
+Mobile Genetic Elements in Muskegon Lake, Michigan
+1Sophia Aredas; 1Marian Schmidt, Ph.D.
+1Department of Microbiology, Cornell University, Ithaca, NY 14853
+
+Mobile genetic elements (MGEs) such as plasmids and bacteriophages are significant drivers of horizontal gene transfer (HGT) within microbial communities. In freshwater ecosystems, microbes play vital roles in the biogeochemical cycling of nutrients by directly consuming organic matter into bioavailable organic and inorganic nutrients for the next trophic levels. Bacteria can be classified into unique lifestyles as truly free-living (FL), particle-associated (PA), and bacteria that alternate between the two lifestyles (generalists). FL microbes tend to have small genomes, lack chemotaxis ability, and have adapted to live in a low concentration of nutrients, while PA microbes have larger genomes that are capable of living in nutrient rich conditions and chemotaxis to colonize particles forming multispecies communities. Little is known about the makeup of MGEs among these lifestyles remains unclear due to the limited ability to annotate MGEs from short read sequencing data. Since PA microbes are in direct contact with each other on particles, we hypothesize that this direct cell-to-cell contact and increased cell density allows for more opportunities to engage in HGT and exchange MGEs. In this study, we analyzed microbial communities from Muskegon Lake (Muskegon, Michigan), a drowned river-mouth that directly connects to Lake Michigan. We then assembled and annotated 346 metagenome assembled genomes (MAGs) and assembled contigs from sixteen samples to identify MGEs within these lifestyles. At the assembly level, we found a higher abundance of phage-encoded genes in FL microbes and no significant difference in plasmid encoded genes per Mbp. At the MAG level, generalist microbes had a higher abundance of phage-encoded genes while FL microbes had a higher median for plasmid-encoded genes per Mbp per MAG.
+
+
+ 
+
+
