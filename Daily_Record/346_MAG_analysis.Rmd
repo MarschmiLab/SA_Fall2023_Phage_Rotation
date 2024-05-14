@@ -83,6 +83,7 @@ virus_summary <- read.table(file = "virus_summary.tsv", sep ="\t", header = TRUE
 #need to create dataframe
 df_plasmidgenes <- data.frame(plasmid_genes)
 
+
 #split the first column called gene into multiple columns
 #because there is so much going on with the column name we are going to separate each word into its own column and then mutate it together (dont be alarmed)
 df_plasmidgenes <- df_plasmidgenes %>% separate(gene, c('Seq_Name', 'DASTool', 'Bin', 'fa_info', 'plasmid', 'genes', 'tsv', 'Contig', 'bp_length', 'Contig_Number'))
@@ -94,7 +95,7 @@ df_plasmidgenes$Contig <- paste(df_plasmidgenes$Contig, df_plasmidgenes$bp_lengt
 
 
 #then we need to get rid of the extra columns that we do not need
-df_plasmidgenes <- subset(df_plasmidgenes, select = -c(DASTool, plasmid, genes, tsv, bp_length)) #invalid argument need to fix
+#df_plasmidgenes <- subset(df_plasmidgenes, select = -c(DASTool, plasmid, genes, tsv, bp_length)) #invalid argument need to fix
 
 #view to make sure it looks good
 ```
@@ -443,15 +444,20 @@ conj_genes_per_bin
 #warning some bins have multiple kinds of conjugation genes so it may look weird but thats ok hopefully 
 conj_genes_per_bin_type <- ggplot(congenee_type, aes(x = fraction_class, y = conj_genes_per_bin, fill = conj_gene_type))+
   geom_bar(position = "dodge", stat = "identity") +
-  xlab("Lifestyle")+
+  xlab(" Bacterial Lifestyle")+
   ylab("Number of Conjugation Genes per Mbp per MAG")+
   scale_fill_wa_d(palette = "rainier", reverse = TRUE) +
+  labs(fill = "Conjugation Genes") +
   theme_classic()
 conj_genes_per_bin_type
 
 # plasmid_sum_magfull_gene_count %>%
 #   group_by(fraction_class, genes_per_bin) %>%
 #   get_summary_stats(genes_per_bin)
+
+#now lets use ggsave to save this plot at a higher dpi and size
+ggsave("conj_genes_per_bin_type_plot.png", plot = conj_genes_per_bin_type, width = 5, height = 4, dpi = 1000)
+
 ```
 
 ### Phage Analysis
@@ -1014,7 +1020,7 @@ phab_genes1 <- phab_genes %>%
 
 phab_genes <- as.data.frame(phab_genes)
 #now lets make the ring                         
-p7 <- p2 +
+phage_tree <- p2 +
   geom_fruit(
     data=phab_genes,
     geom=geom_col,
@@ -1028,7 +1034,10 @@ p7 <- p2 +
   ) +
   geom_treescale(fontsize=2.9, linesize = .2, x=2)
  
-p7 #this is showing us the number of plasmid encoded genes that are divided by MAG
+phage_tree #this is showing us the number of plasmid encoded genes that are divided by MAG
+
+#now lets use ggsave to save this plot at a higher dpi and size
+ggsave("phage_genes_phylotree.png", plot = phage_tree, width = 5, height = 4, dpi = 1000)
 ```
 
 #### Pagels Lambda to describe trait evolution 
@@ -1161,4 +1170,220 @@ phylosig(tree_phylo_phage, trait_phage, method = "K", test=T, nsim=999)
 # Phylogenetic signal K : 0.00182091 
 # P-value (based on 999 randomizations) : 0.906907 
 ```
+
+### Using bakta to annontate MAGs
+So geNomad weirdly did not annontate antibiotic resistance genes so I wanna see if theres really nothing or if there are some hiding? It could be that the dataset that we are working with are short reads so maybe its having trouble annontating them because of that?
+
+
+Anyways so today we are going to use bakta to annontate MAGs #thoughts and prayers
+
+We will be running bakta through a conda environment!
+
+At first I was planning to run through biohpc but their software wasnt updated and it was faster for me to work with a conda environment. I also had dependency issues once the biohpc updated the software so the conda environment was easier and is acutally working!
+```{bash, bakta, eval=FALSE}
+#so to run bakta we will need to download their database in order to annontate the DNA sequences we will make bakta folder inside our data folder and this is where we will run the analysis
+cd /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/346_MAGs/346_MAGs_bakta
+
+#create conda environment
+conda create --name bakta
+conda activate bakta
+
+#install with bioconda (takes a while but worth it pip was super quick but I also had dependency issues?)
+conda install -c conda-forge -c bioconda bakta
+
+#now lets download the database
+  wget https://zenodo.org/record/10522951/files/db-light.tar.gz
+  tar -xzf db-light.tar.gz
+  rm db-light.tar.gz
+
+#move to the correct directory that has the 346 MAG .fa files (I made a copy of the original files and put them into a folder called 346_MAGs_bakta)
+cd Data/346_MAGs/346_MAGs_bakta
+mkdir bakta_annontation
+
+#my amrfinder db was weird and not workign so i forced it to update (omg because it was literally updated last week kms but yay for recent update!)
+amrfinder_update --force_update --database bakta_database/amrfinderplus-db/
+#running code with with bakta conda environment in a loop 
+for file in *.fa
+  do 
+    tag=${file%.fa}  
+    echo "Annotating $file with bakta for AMR genes"
+    #--db is where the database is located
+    bakta --skip-trna --skip-tmrna --skip-ncrna --skip-ncrna-region --skip-crispr --skip-sorf --skip-ori --meta --verbose --db bakta_database --prefix "$tag" --skip-trna --threads 40 --output bakta_annontation/"$tag"_bakta $file
+    echo "Put output in data/MAG_bakta_annotation/'$tag'_bakta"
+  done
+
+echo "Prokka annotation finished!"
+
+# verbose output writing results to results directory with  file prefix and  locus tag using an existing prodigal training file
 ```
+
+### bakta AMR genes parsing
+ok so bakta annontated all the CDSs so now we need to parse out just the AMR genes
+
+This step will be annoying because it does not put the amr genes into a single column so it might have to be a manual thing if it is kill me now:)
+```{r, bakta-AMR-MAG-parse}
+DAStool_91614_bin3 <- read.delim("91614_DAStool_bin3.tsv")
+```
+
+### bakta: so its bizarre to me that it does not find any AMR genes even though I CLEARLY see them being annontated like i literally see something with vancomycin resistance and a bunch of beta lactamases so I think maybe its just not liking the fact I have metagenomic sequences? so I will try another program just to be sure. I did try downloading the nt seqs and uploading one with a clear arg that I see and something that geNomad picked up and I ran it through resfinder but it didnt annontate it with any resistance at all which is nuts. and i see that there are no pseudo genes in those files from the log produced by bakta so i do not know what the heck is going on. I also tried staramr but i realized after teh fact when it wasnt working, its only meant for whole genome assemblies with a specific organism in mind, not metagenomic samples/ assembled genomes. 
+### thsi paper (https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-019-0648-z) used a program called ABRICATE to annontate their ARGs and virulence genes. their paper also had MAGs  so maybe it will work?
+
+```{bash, abricate, eval=FALSE}
+#install abricate
+conda create --name abricate
+
+conda install -c conda-forge -c bioconda -c defaults abricate
+abricate --check
+abricate --list
+
+#make sure you are in the current working directory with 346 MAG *.fa files
+abricate -db ncbi --minid 70 --mincov 70 *.fa > abricate_results.txt
+
+#i was able to get one gene annontated with teh 70% cutoff and this was also validated by NCBI AMRfinder!! weirdly not by geNomad but this is a win
+```
+
+### just for fun adn to see i found another program that might be good for annontating metagenomic ARGS its called fargene. here is a snippet of whats on their github!
+
+"fARGene (Fragmented Antibiotic Resistance Gene iENntifiEr ) is a tool that takes either fragmented metagenomic data or longer sequences as input and predicts and delivers full-length antiobiotic resistance genes as output"
+```{bash, fargene, eval=FALSE}
+#create condda environment
+conda create --name fargene
+conda activate fargene
+#install from bioconda
+conda install -c conda-forge -c bioconda fargene
+
+#cd to where files are
+cd Data/fargene
+
+#example of how to run
+fargene -i path/to/fastafile(s)/*.fasta --no-quality-filtering --no-orf-prediction --hmm-model class_a -o output_dir
+
+fargene -i path/to/fastafile(s)/*.fasta --hmm-model class_a -o output_dir
+
+#beta lactam
+
+#class a
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --no-quality-filtering --no-orf-predict --hmm-model class_a -o class_a_out -p 30
+#class b_1_2
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model class_b_1_2 -o class_b_out -p 30 
+#class_b_3
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model class_b_3 -o class_b_3_out -p 30 
+#class_c
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model class_c -o class_c_out -p 30 
+#class_d_1
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model class_d_1 -o class_d1_out -p 30 
+#class_d_2
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model class_d_2 -o class_d2_out -p 30 
+
+#tetracycline
+
+#tet efflux
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model tet_efflux -o tet_efflux_out -p 30 
+#tet rpg
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model tet_rpg -o tet_rpg -p 30 
+#tet enzyme
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model tet_enzyme -o tet_enzyme -p 30 
+
+#mph qnr
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model qnr -o qnr_out -p 30 
+
+#aminoglycoside [doesnt work]
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model aminoglycoside_model_a -o aminogly_a -p 30 
+```
+
+## Visualizing ARGs
+
+so we will first get our ARGs that have been annontated by geNomad in the amr_gene_file column. the annoying thing is that its in database format so idk what it is easily but thats fine we can fix!
+
+we will be using casewhen and creating one column for ncbi gene name id, then we will be translating the ncbi name id into a readable resistance gene, then another column for antibiotic class, and maybe another column for resistance mechanism?
+
+```{r, geNomad-ARGs-clean-up}
+#for the ncbi name im omitting the part that says -NCBI so really for example the full name is Fos_GSH-NCBIFAM but im just doing Fos_GSH
+df_plasmidsum_clean_up <- df_plasmidgenes %>% 
+  mutate(ARG_clean = case_when(annotation_amr == "NF000088" ~ "viomycin_Vph",
+                               annotation_amr == "NF033135" ~ "cmx_cmrA",
+                               annotation_amr == "NF012178" ~ "tet_MFS_V",
+                               annotation_amr == "NF000496" ~ "Fos_GSH",
+                               annotation_amr == "NF033117" ~ "vanR_ACDEGLN",
+                               annotation_amr == "NF033476" ~ "tet_destruct",
+                               annotation_amr == "NF033134" ~ "cmlA_floR",
+                               annotation_amr == "NF033156" ~ "ble_BLMA_gen",
+                               annotation_amr == "NF033693" ~ "AAC_6p_Ie_fam",
+                               annotation_amr == "NF033105" ~ "bla_subclass_B3",
+                               annotation_amr == "NF000165" ~ "AAC_6p_Entco",
+                               annotation_amr == "NF000272" ~ "OqxA_adapt_sub",
+                               annotation_amr == "NF012171" ~ "APH_6",
+                               annotation_amr == "NF012174" ~ "tet_MFS_A_B_C_D",
+                               annotation_amr == "NF000402" ~ "vanR-B",
+                               annotation_amr == "NF033088" ~ "bla_subclass_B1",
+                               annotation_amr == "NF000005" ~ "ble_BLMT",
+                               is.na(annotation_amr) ~ "NA"))
+
+# now we will create a new column detailing the resistance mechansim of the proposed gene. The mechanisms are based off of the card database (https://card.mcmaster.ca/ontology/39137)
+df_plasmidsum_clean_up <- df_plasmidsum_clean_up %>% 
+  mutate(resistance_mech = case_when(ARG_clean == "viomycin_Vph" ~ "Antibiotic Inactivation",
+                               ARG_clean == "cmx_cmrA" ~ "Antibiotic Efflux",
+                               ARG_clean == "tet_MFS_V" ~ "Antibiotic Efflux",
+                               ARG_clean == "Fos_GSH" ~ "Antibiotic Inactivation",
+                               ARG_clean == "vanR_ACDEGLN" ~ "Antibiotic Target Alteration",
+                               ARG_clean == "tet_destruct" ~ "Antibiotic Inactivation",
+                               ARG_clean == "cmlA_floR" ~ "Antibiotic Efflux",
+                               ARG_clean == "ble_BLMA_gen" ~ "Antibiotic Inactivation",
+                               ARG_clean == "AAC_6p_Ie_fam" ~ "Antibiotic Inactivation",
+                               ARG_clean == "bla_subclass_B3" ~ "Antibiotic Inactivation",
+                               ARG_clean == "cmx_cmrA" ~ "Antibiotic Efflux",
+                               ARG_clean == "AAC_6p_Entco" ~ "Antibiotic Inactivation",
+                               ARG_clean == "OqxA_adapt_sub" ~ "Antibiotic Efflux",
+                               ARG_clean == "APH_6" ~ "Antibiotic Inactivation",
+                               ARG_clean == "tet_MFS_A_B_C_D" ~ "Antibiotic Efflux",
+                               ARG_clean == "vanR-B" ~ "Antibiotic Target Alteration",
+                               ARG_clean == "bla_subclass_B1" ~ "Antibiotic Inactivation",
+                               ARG_clean == "ble_BLMT" ~ "Antibiotic Inactivation",
+                               is.na(ARG_clean) ~ "NA"))
+
+# now id like to have a new column that will have a better explanation of each of the antibiotics and the types of antibiotics. so if i have a bla gene it will be classified under "beta lactam"
+df_plasmidsum_clean_up <- df_plasmidsum_clean_up %>% 
+  mutate(antibiotic_name = case_when(ARG_clean == "viomycin_Vph" ~ "Viomycin",
+                               ARG_clean == "cmx_cmrA" ~ "Chloramphenicol",
+                               ARG_clean == "tet_MFS_V" ~ "Tetracycline",
+                               ARG_clean == "Fos_GSH" ~ "Fosfomycin",
+                               ARG_clean == "vanR_ACDEGLN" ~ "Vancomycin",
+                               ARG_clean == "tet_destruct" ~ "Tetracycline",
+                               ARG_clean == "cmlA_floR" ~ "Chloramphenicol",
+                               ARG_clean == "ble_BLMA_gen" ~ "Bleomycin",
+                               ARG_clean == "AAC_6p_Ie_fam" ~ "Aminoglycoside",
+                               ARG_clean == "bla_subclass_B3" ~ "Beta Lactam",
+                               ARG_clean == "cmx_cmrA" ~ "Chloramphenicol; Bleomycin",
+                               ARG_clean == "AAC_6p_Entco" ~ "Aminoglycoside",
+                               ARG_clean == "OqxA_adapt_sub" ~ "Fluoroquinolone",
+                               ARG_clean == "APH_6" ~ "Aminoglycoside",
+                               ARG_clean == "tet_MFS_A_B_C_D" ~ "Tetracycline",
+                               ARG_clean == "vanR-B" ~ "Vancomycin",
+                               ARG_clean == "bla_subclass_B1" ~ "Beta Lactam",
+                               ARG_clean == "ble_BLMT" ~ "Bleomycin",
+                               is.na(ARG_clean) ~ "NA"))
+
+#now to get to the visualization part lets merge this dataset with the magfull to see where the ARGs fall in each of the bacterial lifestyles
+plasmid_geno_args_magfull <- left_join(df_plasmidsum_clean_up, mag_full_df, by = c("Seq_Name" = "Seq_Name"))
+
+
+# ok now we have merged the documents and we can do the fun part of visualizing the genes, their fraction class, type of antibiotic 
+
+#to make a bar graph we are going to need to count the number of genes
+#filter out nas
+plasmid_geno_args_magfull_no_na <- plasmid_geno_args_magfull[!is.na(plasmid_geno_args_magfull$annotation_amr), ]
+
+count_args_geno <- plasmid_geno_args_magfull_no_na %>%
+  group_by(fraction_class, antibiotic_name ) %>%
+  summarise(count_args = n())
+
+args_geNo <- ggplot(count_args_geno, aes(x = fraction_class, y = count_args, fill = antibiotic_name))+
+  geom_bar(position = "dodge", stat = "identity") +
+  xlab("Bacterial Lifestyle")+
+  ylab("Antibiotic Resistance Genes")+
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE) +
+  labs(fill = "args") +
+  theme_classic()
+args_geNo
+```
+
