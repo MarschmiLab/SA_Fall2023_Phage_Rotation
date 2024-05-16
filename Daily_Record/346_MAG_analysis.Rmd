@@ -402,16 +402,16 @@ congenee <- congenee %>%
                                     grepl("MOB", annotation_conjscan) ~ "MOB genes",
                                     grepl("tra", annotation_conjscan) ~ "tra genes",
                                     grepl("t4cp1", annotation_conjscan) ~ "tra genes")) %>% 
-  select(Seq_Name, Bin, annotation_conjscan, conj_gene_type, fraction_class, estimated_length, Phylum)
+  select(Seq_Name, Bin, annotation_conjscan, conj_gene_type, fraction_class, estimated_length, Phylum, log2FoldChange)
 
 # now we can visualize the number of conjugation genes per bin
 # count all the genes in the bin regardless of conjugation gene type
 congenee_all <- congenee %>%
-  group_by(Seq_Name, fraction_class, estimated_length) %>%
+  group_by(Seq_Name, fraction_class, estimated_length, log2FoldChange) %>%
   summarise(count_conjugation = n())
 #this is counting bin but taking into account conjugation gene type
 congenee_type <- congenee %>%
-  group_by(Seq_Name, conj_gene_type, fraction_class, Phylum, estimated_length) %>%
+  group_by(Seq_Name, conj_gene_type, fraction_class, Phylum, estimated_length, log2FoldChange) %>%
   summarise(
     Count_all_conj_genes_bin = n()
   )
@@ -457,6 +457,31 @@ conj_genes_per_bin_type
 
 #now lets use ggsave to save this plot at a higher dpi and size
 ggsave("conj_genes_per_bin_type_plot.png", plot = conj_genes_per_bin_type, width = 5, height = 4, dpi = 1000)
+
+
+#I am going out of order but here I am making a plot to look at the differential abundance of MAGs, phyla, and lifestyle to see where conjugations genes are distributed
+log2fold_mags <- ggplot(mag_full_df, aes(x = log2FoldChange, y = Phylum, fill = fraction_class, shape = fraction_class)) +
+  geom_col(position = position_dodge(width = 0.7), show.legend = FALSE) +
+  geom_point(alpha = 0.5, position = position(width = 0.4), show.legend = TRUE) +
+  scale_fill_manual(values = fraction_class_colors) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
+  theme_classic() +
+  theme(legend.position = "bottom") 
+log2fold_mag
+
+log2fold_conjugation <- ggplot(congenee_type, aes(x = log2FoldChange, y = Phylum, fill = conj_gene_type, shape = fraction_class)) +
+  geom_col(position = position_dodge(width = .95), show.legend = FALSE) +
+  geom_point(alpha = 0.5, position = position_jitterdodge(), show.legend = TRUE) +
+  xlab("Log2FoldChange")+
+  ylab("Phylum")+
+  scale_fill_wa_d(palette = "rainier", reverse = TRUE) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
+  theme_classic() 
+log2fold_conjugation
+
+#this looks insane I need to talk to marian tmr
+
+#ggsave("log2foldmag.png", plot = log2fold_mags, width = 5, height = 4, dpi = 1000)
 
 ```
 
@@ -1260,6 +1285,8 @@ fargene -i path/to/fastafile(s)/*.fasta --no-quality-filtering --no-orf-predicti
 
 fargene -i path/to/fastafile(s)/*.fasta --hmm-model class_a -o output_dir
 
+#fargene is an older program and it has been been updated since 2022 but it still works fine overall. like half the genes that you can search for work automatically. there are some cases like the aminoglycoside genes or anything that throws and error because those genes and their HMM profiles are not added in the conda environment for fargene. to get around that you must install the conda package AND clone the github repo into your folder and provide a path for the gene you are interested in. it is more manual but it isnt bad whatsoever. if anyone were to repeat this you could follow this code and be fine. be aware that the fargene hmm path only wants it in an absolute path which is a little silly especially for reproducibility but other than that it works! because it si more manual you will need to manually enter the --score and --meta score these values were found on the cloned git repo in a python folder. for more clarification there is an issue on the fargene page. 
+
 #beta lactam
 
 #class a
@@ -1275,6 +1302,9 @@ fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --
 #class_d_2
 fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model class_d_2 -o class_d2_out -p 30 
 
+#b1
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/B1.hmm -o B1 --score 135.8 --meta-score 0.2424 -p 30
+
 #tetracycline
 
 #tet efflux
@@ -1284,11 +1314,29 @@ fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --
 #tet enzyme
 fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa  --hmm-model tet_enzyme -o tet_enzyme -p 30 
 
-#mph qnr
+#mph
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/mph.hmm -o mph --score 100 --meta-score 0.3030 -p 30
+
+#qnr
 fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model qnr -o qnr_out -p 30 
 
-#aminoglycoside [doesnt work]
-fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model aminoglycoside_model_a -o aminogly_a -p 30 
+#aminoglycoside 
+#a
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/aminoglycoside_model_a.hmm -o aminogly_a --score 100 --meta-score .2727 -p 30
+#c
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/aminoglycoside_model_c.hmm -o aminogly_c --score 100 --meta-score 0.2424 -p 30
+#f
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/aminoglycoside_model_f.hmm -o aminogly_f1 --score 100 --meta-score .3636 -p 30
+#h
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/aminoglycoside_model_h.hmm -o aminogly_h --score 100 --meta-score .1818 -p 30
+#i
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/aminoglycoside_model_i.hmm -o aminogly_i --score 100 --meta-score 0.2121 -p 30
+
+#erm
+#type a
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/erm_typeA.hmm -o erm_typeA --score 200 --meta-score 0.4545 -p 30
+#type f
+fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/erm_typeF.hmm -o erm_typeF --score 175 --meta-score 0.4242 -p 30
 ```
 
 ## Visualizing ARGs
@@ -1385,5 +1433,57 @@ args_geNo <- ggplot(count_args_geno, aes(x = fraction_class, y = count_args, fil
   labs(fill = "args") +
   theme_classic()
 args_geNo
+
+#now lets use ggsave to save this plot at a higher dpi and size
+ggsave("geNomad-ARGs-clean-up.png", plot = args_geNo, width = 5, height = 4, dpi = 1000)
+```
+
+#### fargene analysis
+```{r, fargene-args}
+#class a beta lactam
+  # when I look at the predicted orfs nt and amino acid seqs I see that there are 3 predicted orfs when i put the nt seqs into blastx (translated nucleotides) i see that these truly are class a beta lactams. the only thing is technically i see that there ar e10 genes that are predicted but no open reading frame so im just gonna go with the 3 predicted orfs
+  # when i blast I am getting pretty confident scores that this is class a beta lactam like above 80% query and percent identity
+
+  # need to add 91616_bin_48_k99_1416201_1,free-coassembly-bin374, particle-co-bin374
+
+#class b_1_2 beta lactam
+  #2 predicted genes 0 orfs
+  # need to add 91623_bin7, 91627_bin136 (had query + identity above 85%)
+
+#class b_3 beta lactam
+  # 12 predicted genes 9 predicted ORFs
+
+## ok silly of me I accidentally deleted my analysis with the manual models I will add them in here. I have detailed notes of what had genes and what didnt so I will only 
+
+
+# fargene analysis
+
+```
+
+#### log2fold of how mags were categorized into lifestyles
+for my poster the background of how we categorized MAGs into lifestyles is needed for context. we will make a box plot or bar graph of the log2fold change where it will have shapes that denote lifestyle and will be separated by bacterial phyla levels
+```{r, log2fold-MAGs}
+#lets reorder our samples to have it be read like free living, particle attached, and then generalist
+mag_full_df$fraction_class <- factor(mag_full_df$fraction_class, levels = c("Free", "Generalist", "Particle"))
+
+#lets establish fraction class colors 
+fraction_class_colors <- c(
+  "Free" = "#C3774D", 
+  "Generalist" = "#932252",
+  "Particle" = "#8B9322")
+
+#now lets visualize
+log2fold_mags <- ggplot(mag_full_df, aes(x = log2FoldChange, y = Phylum, fill = fraction_class, shape = fraction_class)) +
+  geom_col(position = position_dodge(width = 0.7), show.legend = FALSE) +
+  geom_point(alpha = 0.5, position = position_dodge2(width = 0.4), show.legend = TRUE,) +
+  scale_fill_manual(values = fraction_class_colors) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
+  guides(shape = guide_legend(override.aes = list(size = 3.3))) +
+  theme_classic() +
+  theme(legend.position = "bottom") 
+log2fold_mags
+
+ggsave("log2foldmag.png", plot = log2fold_mags, width = 5, height = 4, dpi = 1000)
+
 ```
 
