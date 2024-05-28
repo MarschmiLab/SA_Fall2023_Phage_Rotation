@@ -275,17 +275,16 @@ percent_mag_full <- mag_full_df %>%
 #                      breaks= scales::pretty_breaks(n = 7))
 
 #then all together
-percent <- ggplot(percent_mag_full, aes(x = fraction_class, y = percent, fill = fraction_class, label = scales::percent(percent)))+
-  geom_col(width = 0.5)+
-  labs(x = "Lifestyle",
-       y = "Percentage of MAGs")+
-  scale_y_continuous(labels = scales::percent,
+percent <- ggplot(percent_mag_full, aes(y = fraction_class, x = percent, fill = fraction_class, label = scales::percent(percent)))+
+  geom_col(width = -.98)+
+  labs(x = "Percentage of MAGs")+
+  scale_x_continuous(labels = scales::percent,
                      breaks= scales::pretty_breaks(n = 7))+
-  geom_text(nudge_y = -.03,
-            color = "white",
+  geom_text(color = "white",
             size = 5, 
-            fontface = "bold")+
-  scale_fill_wa_d("rainier", reverse=TRUE)+
+            fontface = "bold",
+            hjust = 1.4)+
+  scale_fill_manual(values = c("#9FB6DA","#DF3383", "#759C44")) +
   theme_classic()
 percent
 
@@ -298,6 +297,7 @@ percent
 #2 Particle          52
 #3 Generalist       231
 ```
+
 ### Plasmid Analysis
 
 #### Lets look at the breakdown of plasmids in our data set
@@ -424,21 +424,61 @@ congenee_type$conj_genes_per_bin <- congenee_type$Count_all_conj_genes_bin/ cong
 
 #now lets try to merge the conj_genes_per_bin to get the conugation gene type
 congenee_tgt <- left_join(congenee_all, congenee_type, by = c("Seq_Name" = "Seq_Name"))
+
+#levels to order our things
+congenee_all$fraction_class <- factor(congenee_all$fraction_class, levels = c("Particle", "Generalist", "Free"))
+
+log2fold_mags <- ggplot(mag_full_df, aes(y = log2FoldChange, x = Phylum, fill = Phylum, shape = fraction_class)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5, position = position_dodge(width = 0.7), show.legend = FALSE) +
+  geom_point(aes(fill = Phylum), alpha = 0.75, position = position_dodge2(width = 0.4), show.legend = FALSE) +
+  scale_fill_manual(values = c(
+  "Acidobacteriota"  = "dodgerblue4",
+  "Actinobacteriota" = "#C0B956", 
+  "Armatimonadota" = "#e46009",
+  "Bacteroidota" = "#CE8C1D",
+  "Bdellovibrionota" = "#965126",
+  "Bdellovibrionota_C" = "#553D32",
+  "Cyanobacteria" = "#04d2d5",
+  "Firmicutes" = "#80405e",
+  "Gemmatimonadota" = "#b2e902",
+  "Myxococcota_A" = "#72c998",
+  "Planctomycetota" = "#9FB6D9",
+  "Proteobacteria" = "#DF3383",
+  "Verrucomicrobiota" = "#B994E5"
+  )) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
+  guides(fill = guide_legend(override.aes = list(size = 3.3))) +
+  xlab("Phylum")+
+  ylab("log2FoldChange")+
+  theme_classic2() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) 
+log2fold_mags
+
+ggsave("log2foldmag.png", plot = log2fold_mags, width = 5, height = 4, dpi = 1000)
+
 #now that we have ourgenes/sequence name we can plot our data to see what is happening
-conj_genes_per_bin <- ggplot(congenee_all, aes(x = fraction_class, y = conj_genes_per_bin, fill = fraction_class))+
-  geom_boxplot() +
-  geom_point()+
+conj_genes_per_bin <- ggplot(congenee_all, aes(x = fraction_class, y = conj_genes_per_bin, fill = fraction_class, shape = fraction_class))+
+  geom_boxplot(outlier.shape = NA, alpha = 0.5, position = position_dodge(width = 0.7)) +
+  geom_point(aes(fill = fraction_class), alpha = 0.75, position = position_dodge(width = 0.4), show.legend = TRUE)+
   xlab("Lifestyle")+
   ylab("Number of Conjugation Genes per Mbp per MAG")+
-  scale_fill_wa_d(palette = "rainier", reverse = TRUE)+
-  # stat_compare_means(comparisons = list(
-  #     c("Free", "Particle"),
-  #     c("Free", "Generalist"),
-  #     c("Particle", "Generalist")),
-  #                      method = "wilcox.test", paired = FALSE, label = "p.signif",hide.ns = FALSE,
-  #                      p.adjust.method = "fdr") +
+  scale_fill_manual(values = c(
+    "Particle" = "#759C44",
+    "Generalist" = "#DF3383", 
+    "Free" = "#9FB6DA"
+    )) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
+  stat_compare_means(comparisons = list(
+      c("Free", "Particle"),
+      c("Free", "Generalist"),
+      c("Particle", "Generalist")),
+                       method = "wilcox.test", paired = FALSE, label = "p.signif",hide.ns = FALSE,
+                       p.adjust.method = "fdr") +
   theme_classic()
 conj_genes_per_bin
+
+#now lets save it
+ggsave("conjugation_boxplot.png", plot = conj_genes_per_bin, width = 5, height = 4, dpi = 1000)
 
 #now lets visualize the type of conjugation gene in each of the bins
 #warning some bins have multiple kinds of conjugation genes so it may look weird but thats ok hopefully 
@@ -451,37 +491,14 @@ conj_genes_per_bin_type <- ggplot(congenee_type, aes(x = fraction_class, y = con
   theme_classic()
 conj_genes_per_bin_type
 
+
+
 # plasmid_sum_magfull_gene_count %>%
 #   group_by(fraction_class, genes_per_bin) %>%
 #   get_summary_stats(genes_per_bin)
 
 #now lets use ggsave to save this plot at a higher dpi and size
 ggsave("conj_genes_per_bin_type_plot.png", plot = conj_genes_per_bin_type, width = 5, height = 4, dpi = 1000)
-
-
-#I am going out of order but here I am making a plot to look at the differential abundance of MAGs, phyla, and lifestyle to see where conjugations genes are distributed
-log2fold_mags <- ggplot(mag_full_df, aes(x = log2FoldChange, y = Phylum, fill = fraction_class, shape = fraction_class)) +
-  geom_col(position = position_dodge(width = 0.7), show.legend = FALSE) +
-  geom_point(alpha = 0.5, position = position(width = 0.4), show.legend = TRUE) +
-  scale_fill_manual(values = fraction_class_colors) +
-  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
-  theme_classic() +
-  theme(legend.position = "bottom") 
-log2fold_mag
-
-log2fold_conjugation <- ggplot(congenee_type, aes(x = log2FoldChange, y = Phylum, fill = conj_gene_type, shape = fraction_class)) +
-  geom_col(position = position_dodge(width = .95), show.legend = FALSE) +
-  geom_point(alpha = 0.5, position = position_jitterdodge(), show.legend = TRUE) +
-  xlab("Log2FoldChange")+
-  ylab("Phylum")+
-  scale_fill_wa_d(palette = "rainier", reverse = TRUE) +
-  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
-  theme_classic() 
-log2fold_conjugation
-
-#this looks insane I need to talk to marian tmr
-
-#ggsave("log2foldmag.png", plot = log2fold_mags, width = 5, height = 4, dpi = 1000)
 
 ```
 
@@ -800,7 +817,7 @@ mag_full <- mag_full_df
 mag_full <- left_join(mag_full, taxadata, by = c("Seq_Name" = "user_genome"))
 #cleaning up our merged file
 mag_full <- mag_full %>% 
-  select(-c("Domain.x", "Phylum.x", "Class.x", "Order.x", "Family.x", "Genus.x", "Species.x", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "log2FoldChange", "padj", "growth_class",))
+  select(-c("Domain.x", "Phylum.x", "Class.x", "Order.x", "Family.x", "Genus.x", "Species.x", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "padj", "growth_class",))
 
 #Bring in gRodon data
 growthrate<-read.csv("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/phyloseq/bakta_mags_growthrates.csv")%>%
@@ -866,7 +883,7 @@ p1 <- p %<+% mag_full_df +
                        na.translate=FALSE 
   ) +
   scale_starshape_manual(
-    values=c(15,1,12),
+    values=c(11,23,15),
     guide=guide_legend(keywidth = 0.5, keyheight = 0.5, 
                       labs(fill="Fraction Class"), order = 2),
     na.translate=FALSE
@@ -875,11 +892,6 @@ p1 <- p %<+% mag_full_df +
 
 #p1 has ggstar that colors by bacterial phylym and has node tip points as fraction_class
 p1
-
-
-
-
-
 
 #notes about the clade info:
     #cyanobacteria: node 1-19, 348, 349(partial), 350(partial), 351-352, 353(partialbar), 354(partial), 355-365
@@ -908,17 +920,6 @@ p1
     #extra: node 684 seems to cover Bdellovibrionota + Bdellovribrionota_C + Myxococcota_A but i ened to see more
 
 
-```
-
-#### Color tree with geom_tippoint instead of geom_star but ended up not using this for my own usage 
-```{r}
-# p1.0 <- p %<+% mag_full_df +
-#   geom_tippoint(aes(color= fraction_class))+
-#   scale_fill_manual(
-#     values = c("#965953", "black", "#53977a"))
-# 
-# #p1 has ggstar that colors by bacterial phylym and has node tip points as fraction_class
-# p1.0
 ```
 
 #### Now using geom_hilight to highlight ALL bacterial phyla 
@@ -969,12 +970,12 @@ testing_join <- full_join(congenee_all, mag_full_df, by = c("Seq_Name" = "Seq_Na
 testing_join$count_conjugation[is.na(testing_join$count_conjugation)] <- 0
 
 #first lets clean up our file because we keep getting errors that the columns are the same
-new_total <- select(testing_join, -c(fraction_class.x,log2FoldChange,padj,fraction_class.y,Domain,Phylum,Class,Order,Family,Genus,Species,estimated_length.x))
+new_total <- select(testing_join, -c(fraction_class.x,padj,fraction_class.y,Domain,Phylum,Class,Order,Family,Genus,Species,estimated_length.x))
 #convert new_total that is currently a tibble into dataframe
 new_total_df <- as.data.frame(new_total)
 
 #now lets make tree with heatmap ring with ggtreeExtra
-gg_conj <- p2 + 
+gg_conj <- p1 + 
   geom_fruit(
     data=congenee_type,
     geom=geom_tile,
@@ -987,6 +988,29 @@ gg_conj <- p2 +
   scale_alpha_continuous(
     range=c(0,5.5), 
     guide=guide_legend(keywidth = 0.3, keyheight = 0.3, order= 5)
+  ) +
+  scale_fill_manual(
+    values = c("#313167", "#aa5c3a", "olivedrab1", "#eba2b7"),
+    guide=guide_legend(keywidth = 0.5, keyheight = 0.3, order = 4),
+    na.translate= FALSE
+  ) 
+gg_conj #this is trying to look at a heatmap of the conjugation genes without the clade labels 
+
+
+#specify levels
+#conjugation gene type level
+congenee_type$conj_gene_type <- factor(congenee_type$conj_gene_type,
+                                       levels = c("vir genes", "tra genes", "trb genes", "MOB genes"))
+#fraction class
+congenee_type$fraction_class <- factor(congenee_type$fraction_class, levels = c("Particle", "Generalist", "Free"))
+
+#now lets make tree with heatmap ring with ggtreeExtra
+gg_conj <- p1 +
+  geom_fruit(
+    data = congenee_type,
+    geom=geom_tile,
+    mapping=aes(y=Seq_Name, x=conj_gene_type, fill=conj_gene_type),
+    width = 0.35
   ) +
   scale_fill_manual(
     values = c("#313167", "#aa5c3a", "olivedrab1", "#eba2b7"),
@@ -1036,12 +1060,12 @@ p4 #this is showing us the number of plasmid encoded genes that are divided by M
 
 
 #bar graph of phage encoded genes. we will be using the dataframe count_phab_seq to see the number of plasmid encoded genes per bin that has the calculations for # phage genes per MAG
-test_merge_phage <- full_join(count_phab_seq, counting_phage_genes, by=c("Seq_Name"="bin"))
+test_merge_phage <- full_join(phage_presence, phab_genes, by=c("Seq_Name"="Seq_Name"))
 #now turning the NAs into zeros
-test_merge_phage$genes_per_bin[is.na(test_merge_phage$genes_per_bin)] <- 0
+test_merge_phage$genes_per_bin_phage[is.na(test_merge_phage$genes_per_bin_phage)] <- 0
 #cleaning up our merged file
 phab_genes1 <- phab_genes %>% 
-  select(-c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "growth_class", "fraction_class.x", "Bin", "log2FoldChange","padj", "label", "angle", "Completeness", "fraction_class", "growth_class", "bin_length", "length_mb")) 
+  select(-c("Vir_Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species", "CUBHE", "GC", "GCdiv", "ConsistencyHE", "CUB", "CPB", "nHE", "dCUB", "d", "LowerCI", "UpperCI", "FilteredSequences", "growth_class", "fraction_class.x", "Bin", "log2FoldChange","padj", "label", "angle", "Completeness", "fraction_class", "growth_class", "bin_length", "length_mb")) 
 
 phab_genes <- as.data.frame(phab_genes)
 #now lets make the ring                         
@@ -1055,11 +1079,12 @@ phage_tree <- p2 +
     position=position_stackx()
   ) +
   scale_fill_manual(
-    values = c("#965953", "black", "#53977a")
+    values = c("#C3774D", "#8B9322", "#932252")
   ) +
   geom_treescale(fontsize=2.9, linesize = .2, x=2)
- 
-phage_tree #this is showing us the number of plasmid encoded genes that are divided by MAG
+
+
+phage_tree #this is showing us the number of phage encoded genes that are divided by MAG
 
 #now lets use ggsave to save this plot at a higher dpi and size
 ggsave("phage_genes_phylotree.png", plot = phage_tree, width = 5, height = 4, dpi = 1000)
@@ -1242,14 +1267,6 @@ echo "Prokka annotation finished!"
 # verbose output writing results to results directory with  file prefix and  locus tag using an existing prodigal training file
 ```
 
-### bakta AMR genes parsing
-ok so bakta annontated all the CDSs so now we need to parse out just the AMR genes
-
-This step will be annoying because it does not put the amr genes into a single column so it might have to be a manual thing if it is kill me now:)
-```{r, bakta-AMR-MAG-parse}
-DAStool_91614_bin3 <- read.delim("91614_DAStool_bin3.tsv")
-```
-
 ### bakta: so its bizarre to me that it does not find any AMR genes even though I CLEARLY see them being annontated like i literally see something with vancomycin resistance and a bunch of beta lactamases so I think maybe its just not liking the fact I have metagenomic sequences? so I will try another program just to be sure. I did try downloading the nt seqs and uploading one with a clear arg that I see and something that geNomad picked up and I ran it through resfinder but it didnt annontate it with any resistance at all which is nuts. and i see that there are no pseudo genes in those files from the log produced by bakta so i do not know what the heck is going on. I also tried staramr but i realized after teh fact when it wasnt working, its only meant for whole genome assemblies with a specific organism in mind, not metagenomic samples/ assembled genomes. 
 ### thsi paper (https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-019-0648-z) used a program called ABRICATE to annontate their ARGs and virulence genes. their paper also had MAGs  so maybe it will work?
 
@@ -1337,6 +1354,8 @@ fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --h
 fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/erm_typeA.hmm -o erm_typeA --score 200 --meta-score 0.4545 -p 30
 #type f
 fargene -i /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/*.fa --hmm-model /local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/fargene/fargene_analysis/models/erm_typeF.hmm -o erm_typeF --score 175 --meta-score 0.4242 -p 30
+
+#now we will create a dataset from the predicted genes (I have blasted these against blastp and am only going to select it for the sample if it is >80% query and >70% identity other papers have used similar metrics)
 ```
 
 ## Visualizing ARGs
@@ -1347,7 +1366,7 @@ we will be using casewhen and creating one column for ncbi gene name id, then we
 
 ```{r, geNomad-ARGs-clean-up}
 #for the ncbi name im omitting the part that says -NCBI so really for example the full name is Fos_GSH-NCBIFAM but im just doing Fos_GSH
-df_plasmidsum_clean_up <- df_plasmidgenes %>% 
+df_plasmidgenes_clean_up <- merge_plasmidgenes_magfull %>% 
   mutate(ARG_clean = case_when(annotation_amr == "NF000088" ~ "viomycin_Vph",
                                annotation_amr == "NF033135" ~ "cmx_cmrA",
                                annotation_amr == "NF012178" ~ "tet_MFS_V",
@@ -1368,7 +1387,7 @@ df_plasmidsum_clean_up <- df_plasmidgenes %>%
                                is.na(annotation_amr) ~ "NA"))
 
 # now we will create a new column detailing the resistance mechansim of the proposed gene. The mechanisms are based off of the card database (https://card.mcmaster.ca/ontology/39137)
-df_plasmidsum_clean_up <- df_plasmidsum_clean_up %>% 
+df_plasmidgenes_clean_up <- df_plasmidgenes_clean_up %>% 
   mutate(resistance_mech = case_when(ARG_clean == "viomycin_Vph" ~ "Antibiotic Inactivation",
                                ARG_clean == "cmx_cmrA" ~ "Antibiotic Efflux",
                                ARG_clean == "tet_MFS_V" ~ "Antibiotic Efflux",
@@ -1390,7 +1409,7 @@ df_plasmidsum_clean_up <- df_plasmidsum_clean_up %>%
                                is.na(ARG_clean) ~ "NA"))
 
 # now id like to have a new column that will have a better explanation of each of the antibiotics and the types of antibiotics. so if i have a bla gene it will be classified under "beta lactam"
-df_plasmidsum_clean_up <- df_plasmidsum_clean_up %>% 
+df_plasmidgenes_clean_up <- df_plasmidgenes_clean_up  %>% 
   mutate(antibiotic_name = case_when(ARG_clean == "viomycin_Vph" ~ "Viomycin",
                                ARG_clean == "cmx_cmrA" ~ "Chloramphenicol",
                                ARG_clean == "tet_MFS_V" ~ "Tetracycline",
@@ -1411,79 +1430,201 @@ df_plasmidsum_clean_up <- df_plasmidsum_clean_up %>%
                                ARG_clean == "ble_BLMT" ~ "Bleomycin",
                                is.na(ARG_clean) ~ "NA"))
 
-#now to get to the visualization part lets merge this dataset with the magfull to see where the ARGs fall in each of the bacterial lifestyles
-plasmid_geno_args_magfull <- left_join(df_plasmidsum_clean_up, mag_full_df, by = c("Seq_Name" = "Seq_Name"))
+# now lets read in our fargene + genomad.csv file. It was easier for me to make the dataset by hand on Excel which is kinda annoying but its fine. It includes information about the seq_name, bin, gene, class of antibiotic, resistance mechanism of ARG merged with the geNomad results
+ARG_genomad_fargene_processed <- read.csv("/local/workdir/sna49/SA_Fall2023_Phage_Rotation/Data/fargene/amr_gene_moreprocessed.csv")
 
-
-# ok now we have merged the documents and we can do the fun part of visualizing the genes, their fraction class, type of antibiotic 
-
-#to make a bar graph we are going to need to count the number of genes
 #filter out nas
-plasmid_geno_args_magfull_no_na <- plasmid_geno_args_magfull[!is.na(plasmid_geno_args_magfull$annotation_amr), ]
+ARG_genomad_fargene_processed_no_NA <- ARG_genomad_fargene_processed[!is.na(ARG_genomad_fargene_processed$ARG_clean), ]
 
-count_args_geno <- plasmid_geno_args_magfull_no_na %>%
-  group_by(fraction_class, antibiotic_name ) %>%
+
+#count args 
+count_all_args <- ARG_genomad_fargene_processed_no_NA %>%
+  group_by(Seq_Name, fraction_class, estimated_length, log2FoldChange, Phylum, antibiotic_name) %>%
   summarise(count_args = n())
 
-args_geNo <- ggplot(count_args_geno, aes(x = fraction_class, y = count_args, fill = antibiotic_name))+
+#now lets count how many genes there are per mbp per MAG
+count_all_args$count_args <- count_all_args$count_args / count_all_args$estimated_length
+
+#plotting with a bar graph
+args_all <- ggplot(count_all_args, aes(x = fraction_class, y = count_args, fill = antibiotic_name))+
   geom_bar(position = "dodge", stat = "identity") +
   xlab("Bacterial Lifestyle")+
-  ylab("Antibiotic Resistance Genes")+
+  ylab("Number of Antibiotic Resistance Genes per Mbp per MAG")+
   scale_fill_wa_d(palette = "rainier", reverse = TRUE) +
   labs(fill = "args") +
   theme_classic()
-args_geNo
+args_all
 
 #now lets use ggsave to save this plot at a higher dpi and size
-ggsave("geNomad-ARGs-clean-up.png", plot = args_geNo, width = 5, height = 4, dpi = 1000)
+ggsave("genomad-fargene-all-ARGs-clean-up.png", plot = args_geNo, width = 5, height = 4, dpi = 1000)
+
+
+#now lets plot it as a box plot. we will do this by combining anitbiotic reistance genes by fraction. we can facet it by each antibiotic type. we will only show the most different ones. 
+
+
+#box plot
+
+#so here we are looting at the x axis of antibiotic type, y is counting resistance genes and we are filling in the color by fraction class.
+#there are a couple of cases like 
+
+#whole box plot view of the x axis as antibiotic name, y is countng genes, and is filled in by fraction class. good to see an overall view. 
+all_args <- ggplot(count_all_args, aes(x = antibiotic_name, y = count_args, fill = fraction_class, shape = fraction_class))+
+  geom_boxplot(position = position_dodge2(preserve = "single"))+
+  geom_point(aes(group = fraction_class), 
+             alpha = 0.5, 
+             position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75), 
+             show.legend = TRUE) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) 
+all_args
+
+#now we are looking at the x axis of bacterial phylum, y is counting number of ARGs per mbp per MAG 
+box_all_args <- ggplot(count_all_args, aes(x = Phylum, y = count_args, fill = fraction_class, shape = fraction_class))+
+  geom_boxplot(position = position_dodge2(preserve = "single"))+
+  geom_point(aes(group = fraction_class), 
+             alpha = 0.5, 
+             position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75), 
+             show.legend = TRUE) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) 
+box_all_args
+
+#now lets look at everything by fraction class as x axis
+
+#first lets level everything
+count_all_args$fraction_class <- factor(count_all_args$fraction_class, levels = c("Particle", "Generalist", "Free"))
+
+#now we are looking at the x axis of fraction class, y is counting number of ARGs per mbp per MAG 
+box_all_args_fc <- ggplot(count_all_args, aes(x = fraction_class, y = count_args, fill = fraction_class, shape = fraction_class))+
+  geom_boxplot(outlier.shape = NA, alpha = 0.5, position = position_dodge2(preserve = "single"))+
+  geom_point(aes(group = fraction_class), 
+             alpha = 0.75, 
+             position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75), 
+             show.legend = TRUE) +
+  scale_fill_manual(values = c(
+    "Free" = "#9FB6DA",
+    "Generalist" = "#DF3383",
+    "Particle" = "#759C44"
+    )) +
+  stat_compare_means(comparisons = list(
+      c("Free", "Particle"),
+      c("Free", "Generalist"),
+      c("Particle", "Generalist")),
+                       method = "wilcox.test", paired = FALSE, label = "p.signif",hide.ns = TRUE,
+                       p.adjust.method = "fdr") +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
+  xlab("Lifestyle")+
+  ylab("Number of ARGs per Mbp per MAG")+
+  theme_classic()
+box_all_args_fc
+
+#now lets save it
+ggsave("ARGs_boxplot.png", plot = box_all_args_fc, width = 5, height = 4, dpi = 1000)
+
+#now we are looking at the x axis of bacterial phylum, y is counting number of ARGs per mbp per MAG. now this is the faceted version of faceting by fraction class 
+facet_arg_fc <- ggplot(count_all_args, aes(x = Phylum, y = count_args, fill = fraction_class, shape = fraction_class))+
+  geom_boxplot(position = position_dodge2(preserve = "single"))+
+  geom_point(aes(group = fraction_class), 
+             alpha = 0.5, 
+             position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75), 
+             show.legend = TRUE) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
+  facet_wrap(~antibiotic_name, scales = "free") 
+facet_arg_fc
+
+#this is faceted by antibiotic name, x axis is bacterial phylum. y is counting genes
+facet_antibiotic <- ggplot(count_all_args, aes(x = Phylum, y = count_args, fill = antibiotic_name, shape = fraction_class))+
+  geom_boxplot(position = position_dodge2(preserve = "single"))+
+  geom_point(aes(group = fraction_class), 
+             alpha = 0.5, 
+             position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75), 
+             show.legend = TRUE) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
+  facet_wrap(~antibiotic_name, scales = "free") 
+facet_antibiotic
+#so when I look at both box plot views the faceted one makes it more inuitive for me to see
+
+#it depends how we want to visualize everything but I like it when we look at bacterial phylum on x axis and having it faceted by antibiotic name. 
+  #at thsi view point the ones that are not so interesting are bleomycin, macrolides, viomycin
+
+  #for the poster I would really like to have beta lactams, aminoglycosides, and tetracycline and maybe vancomycine?
+
+#the maybes are chloramphenicol, fluoroquinolone, fosphomycine. 
+  # yes fluoroquinoone has all 3 fractoin classes represented so does tetracycline and I find that to be more interesting because I am biased 
+
+#so now to visualize what are in my opinion the most interesting antibiotics (aminoglycosides, beta lactam, tetracycline) i will need to make a filtered dataset to only include these 3
+main_three_ab <- c("Aminoglycoside", "Beta Lactam", "Tetracycline")
+filtered_args_mainthree <- count_all_args[count_all_args$antibiotic_name %in% main_three_ab, ]
+
+# now lets see her
+facet_antibiotic <- ggplot(filtered_args_mainthree, aes(x = Phylum, y = count_args, fill = antibiotic_name, shape = fraction_class)) +
+  geom_boxplot(position = position_dodge2(preserve = "single")) +
+  geom_point(aes(group = fraction_class), 
+             alpha = 0.5, 
+             position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75), 
+             show.legend = TRUE) +
+  scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
+  theme_classic()
+
+facet_antibiotic
+
+
+### or we can make each phylum its own color and we can see
 ```
 
-#### fargene analysis
-```{r, fargene-args}
-#class a beta lactam
-  # when I look at the predicted orfs nt and amino acid seqs I see that there are 3 predicted orfs when i put the nt seqs into blastx (translated nucleotides) i see that these truly are class a beta lactams. the only thing is technically i see that there ar e10 genes that are predicted but no open reading frame so im just gonna go with the 3 predicted orfs
-  # when i blast I am getting pretty confident scores that this is class a beta lactam like above 80% query and percent identity
-
-  # need to add 91616_bin_48_k99_1416201_1,free-coassembly-bin374, particle-co-bin374
-
-#class b_1_2 beta lactam
-  #2 predicted genes 0 orfs
-  # need to add 91623_bin7, 91627_bin136 (had query + identity above 85%)
-
-#class b_3 beta lactam
-  # 12 predicted genes 9 predicted ORFs
-
-## ok silly of me I accidentally deleted my analysis with the manual models I will add them in here. I have detailed notes of what had genes and what didnt so I will only 
-
-
-# fargene analysis
-
-```
 
 #### log2fold of how mags were categorized into lifestyles
 for my poster the background of how we categorized MAGs into lifestyles is needed for context. we will make a box plot or bar graph of the log2fold change where it will have shapes that denote lifestyle and will be separated by bacterial phyla levels
 ```{r, log2fold-MAGs}
+#now we want to see the log2fold changes according to the mags. we will do this by plotting the log2fold change and coloring them by the bacterial phyla. we will visualize it in a box plot manner
+
+#now we can establish bacterial phylum colors
+
+bacterial_phyla_colors <- c(
+  "Acidobacteriota"  = "dodgerblue4",
+  "Actinobacteriota" = "#C0B956", 
+  "Armatimonadota" = "#e46009",
+  "Bacteroidota" = "#CE8C1D",
+  "Bdellovibrionota" = "#965126",
+  "Bdellovibrionota_C" = "#553D32",
+  "Cyanobacteria" = "#04d2d5",
+  "Firmicutes" = "#80405e",
+  "Gemmatimonadota" = "#b2e902",
+  "Myxococcota_A" = "#72c998",
+  "Planctomycetota" = "#9FB6D9",
+  "Proteobacteria" = "#DF3383",
+  "Verrucomicrobiota" = "#B994E5")
+ 
+#turns out our phylum column is not a factor so we need to convert it inot one so taht we can plot
+mag_full_df$Phylum <- factor(mag_full_df$Phylum)
 #lets reorder our samples to have it be read like free living, particle attached, and then generalist
 mag_full_df$fraction_class <- factor(mag_full_df$fraction_class, levels = c("Free", "Generalist", "Particle"))
 
-#lets establish fraction class colors 
-fraction_class_colors <- c(
-  "Free" = "#C3774D", 
-  "Generalist" = "#932252",
-  "Particle" = "#8B9322")
-
 #now lets visualize
-log2fold_mags <- ggplot(mag_full_df, aes(x = log2FoldChange, y = Phylum, fill = fraction_class, shape = fraction_class)) +
-  geom_col(position = position_dodge(width = 0.7), show.legend = FALSE) +
-  geom_point(alpha = 0.5, position = position_dodge2(width = 0.4), show.legend = TRUE,) +
-  scale_fill_manual(values = fraction_class_colors) +
+log2fold_mags <- ggplot(mag_full_df, aes(y = log2FoldChange, x = Phylum, fill = Phylum, shape = fraction_class)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5, position = position_dodge(width = 0.7), show.legend = FALSE) +
+  geom_point(aes(fill = Phylum), alpha = 0.75, position = position_dodge2(width = 0.4), show.legend = FALSE) +
+  scale_fill_manual(values = c(
+  "Acidobacteriota"  = "dodgerblue4",
+  "Actinobacteriota" = "#C0B956", 
+  "Armatimonadota" = "#e46009",
+  "Bacteroidota" = "#CE8C1D",
+  "Bdellovibrionota" = "#965126",
+  "Bdellovibrionota_C" = "#553D32",
+  "Cyanobacteria" = "#04d2d5",
+  "Firmicutes" = "#80405e",
+  "Gemmatimonadota" = "#b2e902",
+  "Myxococcota_A" = "#72c998",
+  "Planctomycetota" = "#9FB6D9",
+  "Proteobacteria" = "#DF3383",
+  "Verrucomicrobiota" = "#B994E5"
+  )) +
   scale_shape_manual(values = c("Free" = 24, "Generalist" = 21, "Particle" = 25)) +
-  guides(shape = guide_legend(override.aes = list(size = 3.3))) +
-  theme_classic() +
-  theme(legend.position = "bottom") 
+  guides(fill = guide_legend(override.aes = list(size = 3.3))) +
+  xlab("Phylum")+
+  ylab("log2FoldChange")+
+  theme_classic2() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) 
 log2fold_mags
 
 ggsave("log2foldmag.png", plot = log2fold_mags, width = 5, height = 4, dpi = 1000)
-
 ```
 
